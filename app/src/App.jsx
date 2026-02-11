@@ -28,6 +28,28 @@ function App() {
     return 'bg-[#F0F0F5]' // cool night
   }, [])
 
+
+  // specific helper to parse "3 months", "2 weeks", etc.
+  const calculateTargetDate = (inputStr) => {
+    if (!inputStr) return new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() // Default 90 days
+
+    const str = inputStr.toLowerCase()
+    const now = new Date()
+    let daysToAdd = 90 // fallback
+
+    const match = str.match(/(\d+)\s*(month|week|day|year)/)
+    if (match) {
+      const val = parseInt(match[1])
+      const unit = match[2]
+      if (unit.startsWith('day')) daysToAdd = val
+      else if (unit.startsWith('week')) daysToAdd = val * 7
+      else if (unit.startsWith('month')) daysToAdd = val * 30
+      else if (unit.startsWith('year')) daysToAdd = val * 365
+    }
+
+    return new Date(now.getTime() + daysToAdd * 24 * 60 * 60 * 1000).toISOString()
+  }
+
   const handleGoalSubmit = async (goal, deadline) => {
     console.log('Goal submitted:', goal, deadline)
 
@@ -36,8 +58,11 @@ function App() {
     console.log('Gemini Result:', result)
 
     if (result.isValid) {
+      // Parse deadline to date format
+      const targetDate = calculateTargetDate(deadline)
+
       // 2. Create Session (this sets it as active)
-      createSession(goal, result.role, deadline)
+      createSession(goal, result.role, targetDate)
 
       // 3. Generate questions via Gemini
       console.log('Generating questions for:', result.role)
