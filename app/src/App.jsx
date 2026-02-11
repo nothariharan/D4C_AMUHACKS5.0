@@ -1,123 +1,232 @@
-import { useEffect, useState, useMemo } from 'react'
-import { GoalInput } from './features/landing/GoalInput'
-import { SwipeStack } from './features/assessment/SwipeStack'
-import { MetroMap } from './features/roadmap/MetroMap'
-import { useStore } from './lib/store'
-import { parseCareerGoal, generateQuestions } from './lib/gemini'
-import { Sidebar } from './components/layout/Sidebar'
-import { AuthModal } from './features/auth/AuthModal'
-import { ContributionGrid } from './features/auth/ContributionGrid'
+import React, { useEffect, useState, useMemo } from 'react'; // Consolidated React and hooks imports
+import { onAuthStateChanged } from 'firebase/auth'; // Firebase Auth
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore'; // Firestore functions
+import { auth, db } from './lib/firebase'; // Consolidated Firebase imports (db added)
+import { useStore } from './lib/store'; // Consolidated Zustand store import
 
-import { User } from 'lucide-react'
-import { ProfilePage } from './features/profile/ProfilePage'
+// Your existing component imports
+import { GoalInput } from './features/landing/GoalInput';
+import { SwipeStack } from './features/assessment/SwipeStack';
+import { MetroMap } from './features/roadmap/MetroMap';
+import { parseCareerGoal, generateQuestions } from './lib/gemini';
+import { Sidebar } from './components/layout/Sidebar';
+import { AuthModal } from './features/auth/AuthModal';
+import { ContributionGrid } from './features/auth/ContributionGrid';
+
+import { User } from 'lucide-react';
+import { ProfilePage } from './features/profile/ProfilePage';
 
 function App() {
-  const { sessions, activeSessionId, createSession, setQuestions, user, isAuthenticated } = useStore()
-  const activeSession = sessions[activeSessionId]
-  const phase = activeSession ? activeSession.phase : 'landing'
-  const [showReplan, setShowReplan] = useState(false)
-  const [showProfile, setShowProfile] = useState(false)
-  const [replanDays, setReplanDays] = useState(7)
-  const [soundOn, setSoundOn] = useState(false)
+  // Destructure all necessary state and actions from your Zustand store
+  const {
+    setUser,                 // For setting basic Firebase user info
+    logoutUser,              // For clearing state on logout
+    setEngagementMetrics,    // To populate engagementMetrics from Firestore
+    setSessions,             // To populate sessions (roadmaps) from Firestore
+    setActiveSessionId,      // To set the active session after loading
+    sessions,
+    activeSessionId,
+    createSession,           // For creating new sessions (triggers sync)
+    setQuestions,            // For setting assessment questions
+    user,
+    isLoggedIn,              // Replaces 'isAuthenticated' for auth status
+    setCurrentTask,          // For navigating to a specific task
+    completeTask,            // For marking tasks complete (triggers sync)
+    engagementMetrics,       // To display user-specific metrics
+  } = useStore();
 
-  // Time of Day theme
+  const activeSession = sessions[activeSessionId];
+  const phase = activeSession ? activeSession.phase : 'landing';
+  const [showReplan, setShowReplan] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [replanDays, setReplanDays] = useState(7);
+  const [soundOn, setSoundOn] = useState(false);
+
+  // ===============================================
+  // Firestore Data Fetching on Auth State Change
+  // (The "Read (On Load/Login)" part of Phase 4)
+  // ===============================================
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => { // Made callback async
+      if (firebaseUser) {
+        console.log("Firebase user detected:", firebaseUser.uid);
+
+        // 1. Set basic Firebase user info in Zustand
+        // This gives immediate user data while we fetch more from Firestore.
+        setUser({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          photoURL: firebaseUser.photoURL,
+        });
+
+        // 2. Fetch User Document (for engagementMetrics and more) from Firestore
+        const userDocRef = doc(db, "users", firebaseUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          const userDataFromFirestore = userDocSnap.data();
+          console.log("User data from Firestore:", userDataFromFirestore);
+
+          // Update user in Zustand with Firestore-specific fields like lastActiveDate
+          // This is crucial for streak calculations
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+            lastActiveDate: userDataFromFirestore.lastActiveDate, // Add this if you track it in the user doc
+          });
+
+          // Set engagementMetrics in Zustand from Firestore data
+          setEngagementMetrics({
+            currentStreak: userDataFromFirestore.currentStreak || 0,
+            totalProjects: userDataFromFirestore.totalProjects || 0,
+            heatmapData: userDataFromFirestore.heatmapData || {},
+            showTrap: userDataFromFirestore.showTrap ?? false, // Get showTrap from Firestore if you persist it
+          });
+
+        } else {
+          console.warn("Firestore user document not found for:", firebaseUser.uid);
+          // This case should ideally not happen if AuthModal correctly creates it on first sign-in.
+          // If it does, you might want to consider creating a default Firestore user document here
+          // or guiding the user through a setup process.
+        }
+
+        // 3. Fetch Roadmaps (sessions) from the sub-collection in Firestore
+        const roadmapsCollectionRef = collection(db, "users", firebaseUser.uid, "roadmaps");
+        const roadmapsSnapshot = await getDocs(roadmapsCollectionRef);
+        const loadedSessions = {};
+        let firstSessionId = null; // To set the activeSessionId if any roadmaps exist
+
+        roadmapsSnapshot.forEach(doc => {
+          const sessionData = doc.data();
+          loadedSessions[doc.id] = { id: doc.id, ...sessionData }; // Store with ID
+          // Try to set an active roadmap: prefer 'active' status, otherwise just take the first one
+          if (!firstSessionId && sessionData.status === "active") {
+            firstSessionId = doc.id;
+          } else if (!firstSessionId) {
+            firstSessionId = doc.id;
+          }
+        });
+        console.log("Loaded sessions from Firestore:", loadedSessions);
+        setSessions(loadedSessions); // Update Zustand store with loaded roadmaps
+
+        if (firstSessionId) {
+          setActiveSessionId(firstSessionId); // Set the first loaded session as active
+        }
+
+
+      } else {
+        // User is signed out.
+        console.log("No Firebase user is signed in.");
+        logoutUser(); // Clear all user-related state in Zustand
+      }
+    });
+
+    // Clean up the listener on component unmount to prevent memory leaks
+    return () => unsubscribe();
+  }, [setUser, logoutUser, setEngagementMetrics, setSessions, setActiveSessionId]); // Dependencies for useEffect
+
+  // Time of Day theme calculation
   const timeOfDayBg = useMemo(() => {
-    const hour = new Date().getHours()
-    if (hour >= 6 && hour < 12) return 'bg-[#FFFBF0]'  // warm morning
-    if (hour >= 12 && hour < 18) return 'bg-brutal-white' // neutral afternoon
-    return 'bg-[#F0F0F5]' // cool night
-  }, [])
+    const hour = new Date().getHours();
+    if (hour >= 6 && hour < 12) return 'bg-[#FFFBF0]'; // warm morning
+    if (hour >= 12 && hour < 18) return 'bg-brutal-white'; // neutral afternoon
+    return 'bg-[#F0F0F5]'; // cool night
+  }, []);
 
 
-  // specific helper to parse "3 months", "2 weeks", etc.
+  // Helper to parse "3 months", "2 weeks", etc. for deadlines
   const calculateTargetDate = (inputStr) => {
-    if (!inputStr) return new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() // Default 90 days
+    if (!inputStr) return new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(); // Default 90 days
 
-    const str = inputStr.toLowerCase()
-    const now = new Date()
-    let daysToAdd = 90 // fallback
+    const str = inputStr.toLowerCase();
+    const now = new Date();
+    let daysToAdd = 90; // fallback
 
-    const match = str.match(/(\d+)\s*(month|week|day|year)/)
+    const match = str.match(/(\d+)\s*(month|week|day|year)/);
     if (match) {
-      const val = parseInt(match[1])
-      const unit = match[2]
-      if (unit.startsWith('day')) daysToAdd = val
-      else if (unit.startsWith('week')) daysToAdd = val * 7
-      else if (unit.startsWith('month')) daysToAdd = val * 30
-      else if (unit.startsWith('year')) daysToAdd = val * 365
+      const val = parseInt(match[1]);
+      const unit = match[2];
+      if (unit.startsWith('day')) daysToAdd = val;
+      else if (unit.startsWith('week')) daysToAdd = val * 7;
+      else if (unit.startsWith('month')) daysToAdd = val * 30;
+      else if (unit.startsWith('year')) daysToAdd = val * 365;
     }
 
-    return new Date(now.getTime() + daysToAdd * 24 * 60 * 60 * 1000).toISOString()
-  }
+    return new Date(now.getTime() + daysToAdd * 24 * 60 * 60 * 1000).toISOString();
+  };
 
+  // Handler for submitting a new goal
   const handleGoalSubmit = async (goal, deadline) => {
-    console.log('Goal submitted:', goal, deadline)
+    console.log('Goal submitted:', goal, deadline);
 
     // 1. Parse goal via Gemini
-    const result = await parseCareerGoal(goal)
-    console.log('Gemini Result:', result)
+    const result = await parseCareerGoal(goal);
+    console.log('Gemini Result:', result);
 
     if (result.isValid) {
       // Parse deadline to date format
-      const targetDate = calculateTargetDate(deadline)
+      const targetDate = calculateTargetDate(deadline);
 
       // 2. Create Session (this sets it as active)
-      createSession(goal, result.role, targetDate)
+      createSession(goal, result.role, targetDate); // This action also triggers syncToFirestore
 
       // 3. Generate questions via Gemini
-      console.log('Generating questions for:', result.role)
-      const questions = await generateQuestions(result.role)
+      console.log('Generating questions for:', result.role);
+      const questions = await generateQuestions(result.role);
 
       if (questions && questions.length > 0) {
-        setQuestions(questions)
+        setQuestions(questions); // This action also triggers syncToFirestore
       } else {
-        alert('Failed to generate questions. Please try again.')
+        alert('Failed to generate questions. Please try again.');
       }
     } else {
-      alert("Invalid goal.")
+      alert("Invalid goal.");
     }
-  }
+  };
 
-  // Calculate time metrics
-  const daysLeft = activeSession?.deadline && !isNaN(new Date(activeSession.deadline)) ? Math.ceil((new Date(activeSession.deadline) - new Date()) / (1000 * 60 * 60 * 24)) : 0
-  const dayNumber = activeSession?.createdAt ? Math.max(1, Math.ceil((new Date() - new Date(activeSession.createdAt)) / (1000 * 60 * 60 * 24))) : 1
-  const totalDays = activeSession?.createdAt && activeSession?.deadline ? Math.ceil((new Date(activeSession.deadline) - new Date(activeSession.createdAt)) / (1000 * 60 * 60 * 24)) : 90
+  // Calculate time metrics for display
+  const daysLeft = activeSession?.deadline && !isNaN(new Date(activeSession.deadline)) ? Math.ceil((new Date(activeSession.deadline) - new Date()) / (1000 * 60 * 60 * 24)) : 0;
+  const dayNumber = activeSession?.createdAt ? Math.max(1, Math.ceil((new Date() - new Date(activeSession.createdAt)) / (1000 * 60 * 60 * 24))) : 1;
+  const totalDays = activeSession?.createdAt && activeSession?.deadline ? Math.ceil((new Date(activeSession.deadline) - new Date(activeSession.createdAt)) / (1000 * 60 * 60 * 24)) : 90;
 
   // Safe display for total days
-  const displayTotalDays = isNaN(totalDays) ? '90' : totalDays
+  const displayTotalDays = isNaN(totalDays) ? '90' : totalDays;
 
   // Find current focus: first incomplete task across all nodes
-  const currentFocusTask = (() => {
-    if (!activeSession?.roadmap?.nodes) return null
+  const currentFocusTask = useMemo(() => {
+    if (!activeSession?.roadmap?.nodes) return null;
     for (const node of activeSession.roadmap.nodes) {
-      if (node.status === 'locked') continue
+      if (node.status === 'locked') continue;
       for (const sub of (node.subNodes || [])) {
         for (let i = 0; i < (sub.tasks || []).length; i++) {
-          const task = sub.tasks[i]
-          const t = typeof task === 'string' ? { title: task } : task
+          const task = sub.tasks[i];
+          const t = typeof task === 'string' ? { title: task } : task;
           if (!t.completed) {
-            return { ...t, nodeId: node.id, subNodeId: sub.id, taskIndex: i }
+            return { ...t, nodeId: node.id, subNodeId: sub.id, taskIndex: i };
           }
         }
       }
     }
-    return null
-  })()
+    return null;
+  }, [activeSession]);
 
-  // Handler for Start/Skip
+  // Handler for Start/Skip buttons
   const handleStartNow = () => {
     if (currentFocusTask) {
-      setCurrentTask({ nodeId: currentFocusTask.nodeId, subNodeId: currentFocusTask.subNodeId, taskIndex: currentFocusTask.taskIndex })
+      setCurrentTask({ nodeId: currentFocusTask.nodeId, subNodeId: currentFocusTask.subNodeId, taskIndex: currentFocusTask.taskIndex });
     }
-  }
+  };
 
   const handleSkip = () => {
     if (currentFocusTask) {
-      completeTask(currentFocusTask.nodeId, currentFocusTask.subNodeId, currentFocusTask.taskIndex)
+      completeTask(currentFocusTask.nodeId, currentFocusTask.subNodeId, currentFocusTask.taskIndex); // completeTask also triggers syncToFirestore
     }
-  }
-  const todayKey = new Date().toISOString().split('T')[0]
-  const timeToday = activeSession?.dailyLog?.[todayKey]?.timeSpent || 0
+  };
+  const todayKey = new Date().toISOString().split('T')[0];
+  const timeToday = activeSession?.dailyLog?.[todayKey]?.timeSpent || 0;
 
   // Motivational quotes
   const QUOTES = [
@@ -131,14 +240,15 @@ function App() {
     "Show your work. Ship your code.",
     "Your roadmap is yours alone. Own it.",
     "One task at a time. That's the whole secret."
-  ]
-  const quoteIndex = activeSessionId ? activeSessionId.charCodeAt(0) % QUOTES.length : 0
-  const quote = QUOTES[quoteIndex]
+  ];
+  const quoteIndex = activeSessionId ? activeSessionId.charCodeAt(0) % QUOTES.length : 0;
+  const quote = QUOTES[quoteIndex];
 
   return (
     <div className={`min-h-screen ${timeOfDayBg} flex flex-col items-center p-4 relative overflow-hidden transition-colors duration-1000`}>
       <Sidebar />
-      <AuthModal />
+      {/* AuthModal will appear based on engagementMetrics.showTrap state */}
+      {engagementMetrics.showTrap && <AuthModal />}
       {showProfile && <ProfilePage onClose={() => setShowProfile(false)} />}
 
       {/* Profile Icon - Top Right Absolute */}
@@ -172,9 +282,9 @@ function App() {
                 <div className="flex items-center gap-1 bg-black text-white px-4 py-2 font-mono text-base font-bold">
                   ⚡ DAY {dayNumber}/{displayTotalDays}
                 </div>
-                {/* Streak */}
+                {/* Streak - Now uses engagementMetrics.currentStreak */}
                 <div className="flex items-center gap-1 bg-brutal-red text-white px-4 py-2 font-mono text-base font-bold">
-                  🔥 STREAK: {activeSession?.streak || 0}
+                  🔥 STREAK: {engagementMetrics.currentStreak || 0}
                 </div>
                 {/* Days Left */}
                 <div className="flex items-center gap-1 bg-brutal-yellow text-black px-4 py-2 font-mono text-base font-bold border-2 border-black">
@@ -221,8 +331,8 @@ function App() {
               <p className="font-mono text-xs text-gray-400 italic">"{quote}"</p>
             </div>
 
-            {/* Heatmap (Visible if we have sessions) */}
-            {activeSession && <ContributionGrid />}
+            {/* Heatmap (Visible if we have sessions) - now passing heatmapData */}
+            {activeSession && <ContributionGrid heatmapData={engagementMetrics.heatmapData} />}
 
           </div>
         ) : (
@@ -238,8 +348,8 @@ function App() {
               Goal First. Action Always.
             </p>
 
-            {/* User Greeting if logged in */}
-            {isAuthenticated && user && (
+            {/* User Greeting if logged in - now uses isLoggedIn */}
+            {isLoggedIn && user && (
               <div className="mt-4 font-mono text-lg font-bold">
                 Welcome back, <span className="text-brutal-blue">{user.displayName}</span>!
               </div>
@@ -295,10 +405,10 @@ function App() {
               </p>
             </div>
 
-            {/* Heatmap on landing too if authed */}
-            {isAuthenticated && (
+            {/* Heatmap on landing too if authed - now uses isLoggedIn and passes heatmapData */}
+            {isLoggedIn && (
               <div className="col-span-3">
-                <ContributionGrid />
+                <ContributionGrid heatmapData={engagementMetrics.heatmapData} />
               </div>
             )}
           </div>
@@ -334,8 +444,8 @@ function App() {
               <div className="flex gap-3">
                 <button
                   onClick={() => {
-                    // TODO: wire to store to actually update deadline
-                    setShowReplan(false)
+                    // TODO: wire to store to actually update deadline (and then syncToFirestore)
+                    setShowReplan(false);
                   }}
                   className="flex-1 bg-brutal-yellow text-black py-2 border-2 border-black font-bold text-sm uppercase shadow-brutal hover:translate-y-0.5 hover:shadow-none transition-all"
                 >
@@ -353,7 +463,7 @@ function App() {
         </div>
       )}
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
