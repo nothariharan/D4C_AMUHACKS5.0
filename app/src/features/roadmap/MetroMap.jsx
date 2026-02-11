@@ -56,22 +56,7 @@ export function MetroMap() {
         taskIndex: currentTaskIds.taskIndex
     } : null
 
-    // Update node position after drag
-    const handleNodeDragEnd = (nodeId, info) => {
-        const { offset } = info
-        setLocalNodes(prev => {
-            const node = prev.find(n => n.id === nodeId);
-            if (!node) return prev;
 
-            const newX = node.x + offset.x;
-            const newY = node.y + offset.y;
-
-            // Persist to store/Firestore
-            updateNodePosition(nodeId, newX, newY);
-
-            return prev.map(n => n.id === nodeId ? { ...n, x: newX, y: newY } : n);
-        });
-    }
 
     // Refs for Auto-Zoom
     const transformRef = useRef(null)
@@ -285,7 +270,8 @@ export function MetroMap() {
                                                     node={node}
                                                     isExpanded={!!expandedNodes[node.id]}
                                                     onClick={() => toggleNode(node.id)}
-                                                    onDragEnd={(e, info) => handleNodeDragEnd(node.id, info)}
+                                                    onDragEnd={() => { }}
+
                                                 />
 
                                                 {/* Render SubNodes (Orbital Layout) */}
@@ -409,10 +395,7 @@ const MainNode = ({ node, isExpanded, onClick, onDragEnd }) => {
 
     return (
         <motion.div
-            drag
-            dragMomentum={false}
-            onDragEnd={onDragEnd}
-            dragPropagation={false}
+
             initial={{ scale: 0 }}
             animate={{ scale: 1, x: 0, y: 0 }} // Reset drag visual state on re-render to defer to 'style' (left/top)
             whileHover={{ scale: 1.1 }}
@@ -424,7 +407,7 @@ const MainNode = ({ node, isExpanded, onClick, onDragEnd }) => {
             }}
             // Use absolute positioning driven by state
             style={{ left: node.x, top: node.y, width: scaledSize, height: scaledSize, marginLeft: -halfSize, marginTop: -halfSize }}
-            className={`absolute rounded-full border-4 border-black shadow-brutal cursor-grab active:cursor-grabbing z-20 flex items-center justify-center group flex-col gap-2
+            className={`absolute rounded-full border-4 border-black shadow-brutal cursor-default z-20 flex items-center justify-center group flex-col gap-2
         ${statusColors[node.status]} ${isExpanded ? 'ring-4 ring-black ring-offset-4' : ''}
       `}
         >

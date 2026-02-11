@@ -1,9 +1,19 @@
-import { motion } from 'framer-motion'
-import { X, Unlock, Zap, Share2, Target, CheckCircle2 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X, Unlock, Zap, Share2, Target, CheckCircle2, ChevronDown, ChevronRight, ListChecks } from 'lucide-react'
 import { useState } from 'react'
 
 export function BlueprintPreviewModal({ blueprint, onClose, onSteal }) {
     const [choice, setChoice] = useState(null) // 'personalize' | 'asis'
+    const [expandedNodes, setExpandedNodes] = useState({})
+    const [expandedSubNodes, setExpandedSubNodes] = useState({})
+
+    const toggleNode = (nodeId) => {
+        setExpandedNodes(prev => ({ ...prev, [nodeId]: !prev[nodeId] }))
+    }
+
+    const toggleSubNode = (subNodeId) => {
+        setExpandedSubNodes(prev => ({ ...prev, [subNodeId]: !prev[subNodeId] }))
+    }
 
     if (!blueprint) return null
 
@@ -60,18 +70,73 @@ export function BlueprintPreviewModal({ blueprint, onClose, onSteal }) {
                     {/* Node List */}
                     <div>
                         <h3 className="font-black uppercase mb-4 text-gray-400 font-mono text-xs tracking-widest">[ CORE_PHASES ]</h3>
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                             {blueprint.roadmap?.nodes?.map((node, i) => (
-                                <div key={node.id} className="flex gap-4 items-start group">
-                                    <div className="w-8 h-8 rounded-full border-2 border-black bg-white flex items-center justify-center font-black text-xs shrink-0 group-hover:bg-brutal-yellow transition-colors">
-                                        {i + 1}
-                                    </div>
-                                    <div className="pt-1.5 flex-1">
-                                        <div className="font-bold uppercase text-lg leading-none">{node.title}</div>
-                                        <div className="text-xs font-mono opacity-50 mt-1 uppercase">
-                                            {node.subNodes?.length || 0} Sub-sectors • {node.subNodes?.reduce((acc, sub) => acc + (sub.tasks?.length || 0), 0) || 0} Quests
+                                <div key={node.id} className="border-2 border-black bg-gray-50 overflow-hidden shadow-[4px_4px_0px_0px_#000]">
+                                    <button
+                                        onClick={() => toggleNode(node.id)}
+                                        className="w-full flex items-center gap-4 p-4 text-left hover:bg-brutal-yellow transition-colors group"
+                                    >
+                                        <div className="w-8 h-8 rounded-full border-2 border-black bg-white flex items-center justify-center font-black text-xs shrink-0 group-hover:bg-black group-hover:text-white transition-colors">
+                                            {i + 1}
                                         </div>
-                                    </div>
+                                        <div className="flex-1">
+                                            <div className="font-bold uppercase text-lg leading-none">{node.title}</div>
+                                            <div className="text-[10px] font-mono opacity-50 mt-1 uppercase">
+                                                {node.subNodes?.length || 0} Sub-sectors • {node.subNodes?.reduce((acc, sub) => acc + (sub.tasks?.length || 0), 0) || 0} Quests
+                                            </div>
+                                        </div>
+                                        {expandedNodes[node.id] ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                                    </button>
+
+                                    <AnimatePresence>
+                                        {expandedNodes[node.id] && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: "auto", opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                className="border-t-2 border-black bg-white"
+                                            >
+                                                {node.subNodes?.map(sub => (
+                                                    <div key={sub.id} className="border-b last:border-b-0 border-black/10">
+                                                        <button
+                                                            onClick={() => toggleSubNode(sub.id)}
+                                                            className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-2 h-2 bg-brutal-blue border border-black rotate-45" />
+                                                                <span className="font-bold uppercase text-sm">{sub.title}</span>
+                                                            </div>
+                                                            <span className="text-[10px] font-mono opacity-40 uppercase">{sub.tasks?.length || 0} Quests</span>
+                                                        </button>
+
+                                                        <AnimatePresence>
+                                                            {expandedSubNodes[sub.id] && (
+                                                                <motion.div
+                                                                    initial={{ height: 0, opacity: 0 }}
+                                                                    animate={{ height: "auto", opacity: 1 }}
+                                                                    exit={{ height: 0, opacity: 0 }}
+                                                                    className="bg-gray-50 border-t border-black/5 px-4 pb-4 pt-2"
+                                                                >
+                                                                    <div className="space-y-2">
+                                                                        {sub.tasks?.map((task, idx) => {
+                                                                            const taskTitle = typeof task === 'string' ? task : task.title;
+                                                                            return (
+                                                                                <div key={idx} className="flex gap-2 items-start text-xs font-mono opacity-70 border-l-2 border-black/20 pl-3 py-1">
+                                                                                    <span className="text-brutal-blue font-black">{idx + 1}.</span>
+                                                                                    <span className="uppercase">{taskTitle}</span>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                </motion.div>
+                                                            )}
+                                                        </AnimatePresence>
+                                                    </div>
+                                                ))}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
                             ))}
                         </div>

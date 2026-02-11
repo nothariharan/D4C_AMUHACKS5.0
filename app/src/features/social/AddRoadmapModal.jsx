@@ -1,21 +1,24 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { X, ArrowRight, Clock } from 'lucide-react'
+import { X, Share2 } from 'lucide-react'
+import { useStore } from '../../lib/store'
 
 export function AddRoadmapModal({ onClose, onSubmit }) {
-    const [goal, setGoal] = useState('')
-    const [deadline, setDeadline] = useState('')
-    const [step, setStep] = useState(1) // 1 = Goal, 2 = Deadline
+    const { sessions } = useStore()
+    const [selectedId, setSelectedId] = useState(null)
     const [isLoading, setIsLoading] = useState(false)
 
+    // Filter sessions that have a generated roadmap
+    const publishableSessions = Object.values(sessions).filter(s => s.roadmap && s.status !== 'archived')
+
     const handleSubmit = async () => {
-        if (isLoading || deadline.length === 0) return
+        if (isLoading || !selectedId) return
         setIsLoading(true)
         try {
-            await onSubmit(goal, deadline)
+            await onSubmit(selectedId)
             onClose()
         } catch (err) {
-            console.error("Submit Error:", err)
+            console.error("Publish Error:", err)
         } finally {
             setIsLoading(false)
         }
@@ -29,67 +32,44 @@ export function AddRoadmapModal({ onClose, onSubmit }) {
                 className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_#000] w-full max-w-lg p-8"
             >
                 <div className="flex justify-between items-start mb-8">
-                    <h2 className="text-3xl font-black uppercase italic tracking-tighter">Initiate New Drive</h2>
+                    <h2 className="text-3xl font-black uppercase italic tracking-tighter text-brutal-blue">Publish Drive</h2>
                     <button onClick={onClose} className="hover:bg-gray-100 p-1">
                         <X size={24} strokeWidth={3} />
                     </button>
                 </div>
 
-                <div className="space-y-6">
-                    {step === 1 ? (
-                        <div className="space-y-4">
-                            <label className="font-mono text-xs uppercase font-black text-gray-400">Step 01 // Target_Goal</label>
-                            <div className="brutal-border bg-white p-2 flex items-center shadow-brutal">
-                                <span className="text-sm font-bold px-3 border-r-2 border-black mr-3 bg-brutal-yellow">GOAL</span>
-                                <input
-                                    type="text"
-                                    value={goal}
-                                    onChange={(e) => setGoal(e.target.value)}
-                                    placeholder="e.g. PYTHON DEVELOPER"
-                                    className="w-full text-lg font-bold outline-none font-mono uppercase bg-transparent"
-                                    autoFocus
-                                />
-                            </div>
+                <p className="font-mono text-xs text-gray-400 uppercase mb-6">Select a roadmap from your local drives to broadcast to the network:</p>
+
+                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                    {publishableSessions.length > 0 ? (
+                        publishableSessions.map((session) => (
                             <button
-                                onClick={() => goal.length > 3 && setStep(2)}
-                                disabled={goal.length <= 3}
-                                className="w-full py-3 bg-black text-white font-black uppercase text-sm hover:bg-brutal-blue transition-colors disabled:opacity-30"
+                                key={session.id}
+                                onClick={() => setSelectedId(session.id)}
+                                className={`w-full text-left p-4 border-2 border-black transition-all flex flex-col gap-1 group ${selectedId === session.id ? 'bg-brutal-yellow shadow-none translate-x-1 translate-y-1' : 'bg-white shadow-[4px_4px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#000]'}`}
                             >
-                                Next Step
+                                <span className="font-black uppercase text-lg leading-tight group-hover:text-brutal-blue">{session.role || session.goal}</span>
+                                <span className="font-mono text-[10px] opacity-60 uppercase italic">
+                                    {session.roadmap?.nodes?.length || 0} Milestones // Created {new Date(session.createdAt).toLocaleDateString()}
+                                </span>
                             </button>
-                        </div>
+                        ))
                     ) : (
-                        <div className="space-y-4">
-                            <label className="font-mono text-xs uppercase font-black text-gray-400">Step 02 // Time_Frame</label>
-                            <div className="brutal-border bg-white p-2 flex items-center shadow-brutal">
-                                <span className="text-sm font-bold px-3 border-r-2 border-black mr-3 bg-brutal-red text-white">TIME</span>
-                                <input
-                                    type="text"
-                                    value={deadline}
-                                    onChange={(e) => setDeadline(e.target.value)}
-                                    placeholder="e.g. 3 MONTHS"
-                                    className="w-full text-lg font-bold outline-none font-mono uppercase bg-transparent"
-                                    autoFocus
-                                />
-                            </div>
-                            <div className="flex gap-4">
-                                <button
-                                    onClick={() => setStep(1)}
-                                    className="flex-1 py-3 bg-white border-2 border-black font-black uppercase text-sm hover:bg-gray-100 transition-colors"
-                                >
-                                    Back
-                                </button>
-                                <button
-                                    onClick={handleSubmit}
-                                    disabled={isLoading || deadline.length === 0}
-                                    className="flex-[2] py-3 bg-brutal-green text-black font-black uppercase text-sm border-2 border-black shadow-[4px_4px_0px_0px_#000] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center gap-2"
-                                >
-                                    {isLoading ? <div className="w-4 h-4 border-2 border-black border-t-transparent animate-spin rounded-full" /> : <><ArrowRight size={18} /> Initialize</>}
-                                </button>
-                            </div>
+                        <div className="border-4 border-dashed border-black/10 p-10 text-center bg-gray-50">
+                            <p className="font-mono text-sm text-gray-400 uppercase font-black">No active roadmaps found.<br />Back to mission control to start a new drive.</p>
                         </div>
                     )}
                 </div>
+
+                {publishableSessions.length > 0 && (
+                    <button
+                        onClick={handleSubmit}
+                        disabled={isLoading || !selectedId}
+                        className="w-full mt-8 py-4 bg-black text-white font-black uppercase text-xl italic hover:bg-brutal-blue disabled:opacity-30 disabled:hover:bg-black transition-all shadow-[8px_8px_0px_0px_rgba(59,130,246,0.3)] flex items-center justify-center gap-3 active:translate-y-1 active:shadow-none"
+                    >
+                        {isLoading ? <div className="w-6 h-6 border-4 border-white border-t-transparent animate-spin rounded-full" /> : <><Share2 size={24} strokeWidth={3} /> Publish to Exchange</>}
+                    </button>
+                )}
             </motion.div>
         </div>
     )

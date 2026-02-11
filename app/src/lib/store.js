@@ -290,6 +290,7 @@ export const useStore = create((set, get) => ({
                         return { sessions: sessionsAfterRoadmap };
                     });
                     get().syncToFirestore(); // Sync after roadmap is generated and added to state
+                    get().publishBlueprint(get().activeSessionId); // Automatically integrate into exchange
                 }).catch(err => {
                     console.error("Error generating roadmap:", err);
                     // TODO: Handle error, perhaps revert phase
@@ -360,6 +361,7 @@ export const useStore = create((set, get) => ({
             };
         });
         get().syncToFirestore(); // Sync after evidence submission
+        if (get().activeSessionId) get().publishBlueprint(get().activeSessionId);
     },
 
     completeTask: (nodeId, subNodeId, taskIndex) => {
@@ -471,6 +473,7 @@ export const useStore = create((set, get) => ({
             };
         });
         get().syncToFirestore(); // Trigger background sync after optimistic update
+        if (get().activeSessionId) get().publishBlueprint(get().activeSessionId);
     },
 
     logTime: (minutes) => {
@@ -521,21 +524,56 @@ export const useStore = create((set, get) => ({
         const session = state.sessions[sessionId];
         if (!session || !state.user) return;
 
+        const { getDoc, setDoc } = await import('firebase/firestore');
         const blueprintRef = doc(db, "public_blueprints", sessionId);
-        const blueprintData = {
-            ...session,
-            authorName: state.user.displayName,
-            authorId: state.user.uid,
-            stealCount: 0,
-            publishedAt: new Date().toISOString()
-        };
 
         try {
-            await writeBatch(db).set(blueprintRef, blueprintData).commit();
-            console.log("Blueprint published!");
+            const existing = await getDoc(blueprintRef);
+            const metadata = existing.exists() ? {
+                stealCount: existing.data().stealCount || 0,
+                upvotes: existing.data().upvotes || 0,
+                downvotes: existing.data().downvotes || 0,
+                votes: existing.data().votes || {}
+            } : {
+                stealCount: 0,
+                upvotes: 0,
+                downvotes: 0,
+                votes: {}
+            };
+
+            const blueprintData = {
+                ...session,
+                authorName: state.user.displayName,
+                authorId: state.user.uid,
+                ...metadata,
+                publishedAt: existing.exists() ? existing.data().publishedAt : new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+
+            await setDoc(blueprintRef, blueprintData);
+            console.log("Blueprint synced to exchange!");
         } catch (error) {
-            console.error("Publish Error:", error);
+            console.error("Publish Sync Error:", error);
         }
+    },
+
+    subscribeToExchange: (callback) => {
+        const { onSnapshot, collection, query, orderBy, limit } = import('firebase/firestore');
+        const q = query(
+            collection(db, "public_blueprints"),
+            orderBy("publishedAt", "desc"),
+            limit(50)
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            const blueprints = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            callback(blueprints);
+        }, (error) => {
+            console.error("Exchange Subscription Error:", error);
+        });
     },
 
     stealBlueprint: async (blueprint, personalize = true) => {
@@ -560,18 +598,28 @@ export const useStore = create((set, get) => ({
             }));
         }
 
+        // Lineage tracking
+        const provenance = {
+            isForked: true,
+            originalAuthorId: blueprint.authorId,
+            originalAuthorName: blueprint.authorName,
+            forkedFromId: blueprint.id, // The public blueprint ID
+            stolenAt: new Date().toISOString()
+        };
+
         const stolenSession = {
             ...blueprint,
             id: newId,
-            status: "active",
-            phase: personalize ? 'blueprint-assessment' : 'roadmap',
-            isStolen: true,
-            originId: blueprint.id,
             createdAt: new Date().toISOString(),
-            dailyLog: {},
-            streak: 0,
+            lastActiveDate: new Date().toISOString(),
+            isStolen: true,
+            provenance, // Store forking history
+            phase: 'assessment', // Always start in assessment phase for stolen blueprints
+            currentQuestionIndex: 0,
+            answers: {},
             knownSkills: [],
             gapSkills: [],
+            progress: 0,
             roadmap: personalize ? blueprint.roadmap : { ...blueprint.roadmap, nodes }
         };
 
@@ -588,19 +636,19 @@ export const useStore = create((set, get) => ({
 
             // Increment counter in Firestore via Transaction
             const blueprintRef = doc(db, "public_blueprints", blueprint.id);
-            const { runTransaction } = await import('firebase/firestore');
+            const { runTransaction, increment } = await import('firebase/firestore');
 
             await runTransaction(db, async (transaction) => {
                 const bDoc = await transaction.get(blueprintRef);
                 if (!bDoc.exists()) throw "Blueprint deleted";
-                const newCount = (bDoc.data().stealCount || 0) + 1;
-                transaction.update(blueprintRef, { stealCount: newCount });
+                transaction.update(blueprintRef, {
+                    stealCount: increment(1)
+                });
             });
 
             set(s => ({
                 sessions: { ...s.sessions, [newId]: stolenSession },
             }));
-
             get().syncToFirestore();
             return newId;
         } catch (error) {
@@ -610,6 +658,53 @@ export const useStore = create((set, get) => ({
                 sessions: { ...s.sessions, [newId]: stolenSession },
             }));
             return newId;
+        }
+    },
+
+    voteBlueprint: async (blueprintId, voteType) => {
+        const state = get();
+        if (!state.user) return;
+        const userId = state.user.uid;
+
+        const { runTransaction } = await import('firebase/firestore');
+        const blueprintRef = doc(db, "public_blueprints", blueprintId);
+
+        try {
+            await runTransaction(db, async (transaction) => {
+                const bDoc = await transaction.get(blueprintRef);
+                if (!bDoc.exists()) throw "Blueprint deleted";
+
+                const data = bDoc.data();
+                const votes = data.votes || {};
+                const currentVote = votes[userId];
+
+                let newUpvotes = data.upvotes || 0;
+                let newDownvotes = data.downvotes || 0;
+
+                // If user is clicking the same vote twice, remove it
+                if (currentVote === voteType) {
+                    delete votes[userId];
+                    if (voteType === 'up') newUpvotes = Math.max(0, newUpvotes - 1);
+                    else newDownvotes = Math.max(0, newDownvotes - 1);
+                } else {
+                    // Changing vote or first time voting
+                    if (currentVote === 'up') newUpvotes = Math.max(0, newUpvotes - 1);
+                    if (currentVote === 'down') newDownvotes = Math.max(0, newDownvotes - 1);
+
+                    votes[userId] = voteType;
+                    if (voteType === 'up') newUpvotes += 1;
+                    else newDownvotes += 1;
+                }
+
+                transaction.update(blueprintRef, {
+                    votes,
+                    upvotes: newUpvotes,
+                    downvotes: newDownvotes
+                });
+            });
+            console.log("Vote recorded!");
+        } catch (error) {
+            console.error("Vote Error:", error);
         }
     },
 
@@ -634,6 +729,7 @@ export const useStore = create((set, get) => ({
             }
         }));
         get().syncToFirestore();
+        get().publishBlueprint(sessionId); // Update shared version if tailored
     },
 
     createRoadmap: async (goal, deadline) => {

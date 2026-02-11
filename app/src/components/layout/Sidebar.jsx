@@ -103,7 +103,7 @@ export function Sidebar() {
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-[#333]">
+                        <div className="flex-1 overflow-y-auto p-4 pr-6 space-y-6 bg-[#333]">
                             <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
@@ -135,10 +135,24 @@ export function Sidebar() {
                                         >
                                             {/* Fork Tag */}
                                             {session.isStolen && (
-                                                <div className="absolute -top-2 -right-2 z-20 bg-pink-500 text-white px-2 py-0.5 text-[8px] font-black uppercase border-2 border-black rotate-12">
+                                                <div className="absolute -top-2 -right-2 z-20 bg-pink-500 text-white px-3 py-1 text-[10px] font-black uppercase border-2 border-black rotate-12 shadow-[2px_2px_0px_0px_#000]">
                                                     STOLEN
                                                 </div>
                                             )}
+
+                                            {/* Delete Button */}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (window.confirm("Are you letting go of our goal?")) {
+                                                        useStore.getState().deleteSession(session.id);
+                                                    }
+                                                }}
+                                                className="absolute -top-3 -left-3 z-30 bg-brutal-red text-white p-1.5 border-2 border-black rounded-full shadow-[2px_2px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all opacity-0 group-hover:opacity-100"
+                                                title="Eject Goal"
+                                            >
+                                                <X size={14} strokeWidth={4} />
+                                            </button>
                                             {/* Cartridge Shape */}
                                             <div className={`
                                                 p-4 border-4 border-black shadow-[4px_4px_0px_0px_#000] 

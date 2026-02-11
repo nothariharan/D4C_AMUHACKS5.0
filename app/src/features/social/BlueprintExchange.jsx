@@ -4,38 +4,44 @@ import { db } from '../../lib/firebase'
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore'
 import { useStore } from '../../lib/store'
 import { Odometer } from './Odometer'
-import { Share2, Lock, Unlock, Zap, Ghost, Plus, Eye, Target } from 'lucide-react'
+import { Share2, Lock, Unlock, Zap, Ghost, Plus, Eye, Target, Share, RefreshCw, AlertTriangle, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { BlueprintPreviewModal } from './BlueprintPreviewModal'
 import { AddRoadmapModal } from './AddRoadmapModal'
 import { PersonalizationChoiceModal } from './PersonalizationChoiceModal'
+import { Search, SlidersHorizontal, ArrowUpAz, Clock, GitFork } from 'lucide-react'
 
 export function BlueprintExchange() {
     const [blueprints, setBlueprints] = useState([])
     const [loading, setLoading] = useState(true)
-    const { reset, setShowExchange, stealBlueprint, createRoadmap } = useStore()
+    const [error, setError] = useState(null)
+    const { user, subscribeToExchange, voteBlueprint, publishBlueprint, stealBlueprint } = useStore()
     const [selectedBlueprint, setSelectedBlueprint] = useState(null)
     const [showAddModal, setShowAddModal] = useState(false)
     const [choiceBlueprint, setChoiceBlueprint] = useState(null)
+    const [searchQuery, setSearchQuery] = useState('')
+    const [sortBy, setSortBy] = useState('newest') // newest, top, forked
 
     useEffect(() => {
-        const fetchBlueprints = async () => {
-            try {
-                const q = query(
-                    collection(db, "public_blueprints"),
-                    orderBy("publishedAt", "desc"),
-                    limit(20)
-                )
-                const snap = await getDocs(q)
-                const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-                setBlueprints(data)
-            } catch (err) {
-                console.error("Fetch Blueprints Error:", err)
-            } finally {
-                setLoading(false)
-            }
-        }
-        fetchBlueprints()
-    }, [])
+        // Use real-time subscription
+        const unsubscribe = subscribeToExchange((data) => {
+            setBlueprints(data)
+            setLoading(false)
+        })
+        return () => unsubscribe && unsubscribe()
+    }, [subscribeToExchange])
+
+    const filteredBlueprints = blueprints
+        .filter(bp => {
+            const query = searchQuery.toLowerCase()
+            return (bp.role || bp.goal || '').toLowerCase().includes(query) ||
+                (bp.authorName || '').toLowerCase().includes(query)
+        })
+        .sort((a, b) => {
+            if (sortBy === 'newest') return new Date(b.publishedAt) - new Date(a.publishedAt)
+            if (sortBy === 'top') return ((b.upvotes || 0) - (b.downvotes || 0)) - ((a.upvotes || 0) - (a.downvotes || 0))
+            if (sortBy === 'forked') return (b.stealCount || 0) - (a.stealCount || 0)
+            return 0
+        })
 
     if (loading) {
         return (
@@ -59,27 +65,72 @@ export function BlueprintExchange() {
                     </p>
                 </div>
                 <div className="flex flex-col items-end gap-3">
-                    <button
-                        onClick={() => setShowAddModal(true)}
-                        className="bg-white border-4 border-black px-6 py-3 font-black uppercase text-sm shadow-[4px_4px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center gap-2 group"
-                    >
-                        <Plus size={20} strokeWidth={3} className="group-hover:rotate-90 transition-transform" />
-                        Add Roadmap
-                    </button>
-                    <div className="bg-black text-[#0f0] p-4 font-mono text-xs border-2 border-[#0f0]/30 text-right">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={fetchBlueprints}
+                            disabled={loading}
+                            className={`p-3 bg-white border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all ${loading ? 'opacity-50' : ''}`}
+                        >
+                            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+                        </button>
+                        <button
+                            onClick={() => setShowAddModal(true)}
+                            className="bg-white border-4 border-black px-6 py-3 font-black uppercase text-sm shadow-[4px_4px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center gap-2 group"
+                        >
+                            <Plus size={20} strokeWidth={3} className="group-hover:rotate-90 transition-transform" />
+                            Add Roadmap
+                        </button>
+                    </div>
+                    <div className={`p-4 font-mono text-xs border-2 text-right transition-colors ${blueprints.length > 0 ? 'bg-black text-[#0f0] border-[#0f0]/30' : 'bg-brutal-red text-white border-black shadow-[4px_4px_0px_0px_#000]'}`}>
                         NET_CONNECT: ESTABLISHED <br />
-                        DRIVES_READY: {blueprints.length}
+                        DRIVES_READY: {blueprints.length} {error ? '[ERROR_DETECTED]' : ''}
                     </div>
                 </div>
             </div>
 
+            {/* Search & Filter Bar */}
+            <div className="mb-10 flex flex-col md:flex-row gap-4">
+                <div className="flex-1 relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 opacity-40" size={20} />
+                    <input
+                        type="text"
+                        placeholder="SEARCH ROADMAPS, ROLES, OR CREATORS..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-white border-4 border-black p-4 pl-12 font-black uppercase text-sm focus:outline-none focus:bg-brutal-yellow/10 transition-colors shadow-[4px_4px_0px_0px_#000]"
+                    />
+                </div>
+                <div className="flex gap-2">
+                    {[
+                        { id: 'newest', icon: Clock, label: 'NEW' },
+                        { id: 'top', icon: ThumbsUp, label: 'TOP' },
+                        { id: 'forked', icon: GitFork, label: 'POPS' }
+                    ].map(btn => (
+                        <button
+                            key={btn.id}
+                            onClick={() => setSortBy(btn.id)}
+                            className={`px-4 py-2 border-4 border-black font-black uppercase text-xs flex items-center gap-2 transition-all shadow-[4px_4px_0px_0px_#000] active:shadow-none active:translate-y-1
+                                ${sortBy === btn.id ? 'bg-brutal-yellow' : 'bg-white hover:bg-gray-100'}
+                            `}
+                        >
+                            <btn.icon size={14} strokeWidth={3} />
+                            {btn.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {blueprints.map((bp) => (
+                {filteredBlueprints.map((bp) => (
                     <BlueprintCard
                         key={bp.id}
                         blueprint={bp}
+                        userId={user?.uid}
                         onClick={() => setSelectedBlueprint(bp)}
-                        onAdd={() => setChoiceBlueprint(bp)}
+                        onVote={async (id, type) => {
+                            await voteBlueprint(id, type)
+                            // Real-time onSnapshot handles the refresh automatically!
+                        }}
                     />
                 ))}
             </div>
@@ -99,9 +150,10 @@ export function BlueprintExchange() {
                 {showAddModal && (
                     <AddRoadmapModal
                         onClose={() => setShowAddModal(false)}
-                        onSubmit={async (goal, deadline) => {
-                            await createRoadmap(goal, deadline)
-                            setShowExchange(false)
+                        onSubmit={async (sessionId) => {
+                            await publishBlueprint(sessionId)
+                            await fetchBlueprints() // Re-fetch to show the new blueprint
+                            alert("Roadmap Broadcasted Successfully! 🚀")
                         }}
                     />
                 )}
@@ -118,17 +170,30 @@ export function BlueprintExchange() {
                 )}
             </AnimatePresence>
 
-            {blueprints.length === 0 && (
+            {error && (
+                <div className="mb-8 p-4 bg-brutal-red border-4 border-black text-white font-mono text-sm flex items-center gap-3 shadow-[8px_8px_0px_0px_#000]">
+                    <AlertTriangle size={24} />
+                    <div>
+                        <div className="font-black uppercase italic">Critical Interface Conflict:</div>
+                        <div>{error}</div>
+                    </div>
+                </div>
+            )}
+
+            {blueprints.length === 0 && !loading && !error && (
                 <div className="border-4 border-dashed border-black/20 p-20 text-center">
                     <Ghost size={48} className="mx-auto opacity-20 mb-4" />
-                    <p className="font-black opacity-30 uppercase">The cloud is empty. Be the first to publish.</p>
+                    <p className="font-black opacity-30 uppercase italic mb-2">The cloud is empty. Be the first to publish.</p>
+                    <p className="font-mono text-[10px] opacity-40 uppercase">If you just published, try the refresh pulse on the right.</p>
                 </div>
             )}
         </div>
     )
 }
 
-function BlueprintCard({ blueprint, onClick, onAdd }) {
+function BlueprintCard({ blueprint, userId, onClick, onVote }) {
+    const userVote = blueprint.votes?.[userId];
+
     return (
         <motion.div
             whileHover={{ scale: 1.01, translateY: -5 }}
@@ -136,10 +201,46 @@ function BlueprintCard({ blueprint, onClick, onAdd }) {
             className="group relative bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-6 flex flex-col h-full hover:shadow-[12px_12px_0px_0px_#000] cursor-pointer transition-all"
         >
             <div className="flex justify-between items-start mb-4">
-                <div className="bg-black text-white px-3 py-1 text-xs font-black uppercase italic">
-                    By {blueprint.authorName || 'Shadow Dev'}
+                <div className="flex flex-col">
+                    <div className="bg-black text-white px-3 py-1 text-xs font-black uppercase italic w-fit">
+                        By {blueprint.authorName || 'Shadow Dev'}
+                    </div>
+                    {blueprint.provenance?.isForked && (
+                        <div className="flex items-center gap-1 mt-1 font-mono text-[9px] font-black uppercase opacity-60">
+                            <GitFork size={10} /> Forked from {blueprint.provenance.originalAuthorName}
+                        </div>
+                    )}
                 </div>
-                <Odometer value={blueprint.stealCount || 0} />
+                <div className="flex items-center gap-3">
+                    <Odometer value={blueprint.stealCount || 0} />
+                    <div className="flex items-center gap-1 border-l-2 border-black pl-3 ml-1">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onVote(blueprint.id, 'up');
+                            }}
+                            className={`p-1.5 border-2 border-black shadow-[2px_2px_0px_0px_#000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none active:shadow-none active:translate-y-0.5 transition-all
+                                ${userVote === 'up' ? 'bg-brutal-green' : 'bg-white hover:bg-gray-100'}
+                            `}
+                        >
+                            <ThumbsUp size={14} strokeWidth={3} />
+                        </button>
+                        <span className="font-mono text-xs font-black min-w-[1ch] text-center">
+                            {(blueprint.upvotes || 0) - (blueprint.downvotes || 0)}
+                        </span>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onVote(blueprint.id, 'down');
+                            }}
+                            className={`p-1.5 border-2 border-black shadow-[2px_2px_0px_0px_#000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none active:shadow-none active:translate-y-0.5 transition-all
+                                ${userVote === 'down' ? 'bg-brutal-red text-white' : 'bg-white hover:bg-gray-100'}
+                            `}
+                        >
+                            <ThumbsDown size={14} strokeWidth={3} />
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <h3 className="text-2xl font-black uppercase leading-tight mb-2 group-hover:text-brutal-blue transition-colors">
@@ -152,28 +253,12 @@ function BlueprintCard({ blueprint, onClick, onAdd }) {
                         {n.title}
                     </span>
                 ))}
-                {blueprint.roadmap?.nodes?.length > 3 && (
-                    <span className="font-mono text-[10px] bg-gray-100 border-2 border-dashed border-black px-1.5 py-0.5 font-bold">
-                        +{blueprint.roadmap.nodes.length - 3} MORE
-                    </span>
-                )}
             </div>
 
-            <div className="mt-auto space-y-4">
-                <div className="flex items-center gap-4 text-xs font-mono opacity-60">
+            <div className="mt-auto space-y-4 pt-4 border-t-2 border-black border-dashed opacity-60">
+                <div className="flex items-center gap-4 text-xs font-mono">
                     <span className="flex items-center gap-1"><Unlock size={12} /> {blueprint.roadmap?.nodes?.length || 0} Milestones</span>
                     <span className="flex items-center gap-1"><Zap size={12} /> {blueprint.difficulty || 'Expert'}</span>
-                </div>
-
-                <div
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onAdd();
-                    }}
-                    className="w-full py-4 font-black uppercase text-xl italic border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:bg-brutal-green transition-all flex items-center justify-center gap-3 bg-white"
-                >
-                    <Plus size={24} strokeWidth={3} />
-                    Add Roadmap
                 </div>
             </div>
         </motion.div>

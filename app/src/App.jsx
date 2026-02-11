@@ -18,6 +18,7 @@ import { generateTailoringQuestions } from './lib/gemini';
 
 import { User } from 'lucide-react';
 import { ProfilePage } from './features/profile/ProfilePage';
+import { LoadingScreen } from './components/common/LoadingScreen';
 
 function App() {
   // Destructure all necessary state and actions from your Zustand store
@@ -255,6 +256,9 @@ function App() {
 
   return (
     <div className={`min-h-screen ${timeOfDayBg} flex flex-col items-center p-4 relative overflow-hidden transition-colors duration-1000`}>
+      <AnimatePresence>
+        {!isInitialLoadComplete && <LoadingScreen />}
+      </AnimatePresence>
       <Sidebar />
       {/* AuthModal will appear based on engagementMetrics.showTrap state */}
       {engagementMetrics.showTrap && <AuthModal />}
