@@ -42,6 +42,8 @@ export const useStore = create((set, get) => ({
     activeSessionId: null,
     currentTaskIds: null,   // { nodeId, subNodeId, taskIndex } or null
 
+    isInitialLoadComplete: false, // Tracks if first Firestore hydration is done
+
 
     // ===========================================
     // Core Actions for Firebase Integration
@@ -77,7 +79,10 @@ export const useStore = create((set, get) => ({
             showTrap: metrics.showTrap ?? false, // Use nullish coalescing for boolean
         }
     })),
-    setSessions: (sessionsData) => set({ sessions: sessionsData }),
+    setSessions: (sessionsData) => set((state) => ({
+        sessions: { ...state.sessions, ...sessionsData }, // MERGE to prevent race condition overwrites
+    })),
+    setInitialLoadComplete: (status) => set({ isInitialLoadComplete: status }),
     setActiveSessionId: (id) => set({ activeSessionId: id }),
 
     // Action to manage the "trap" modal visibility (used by AuthModal)
@@ -108,10 +113,9 @@ export const useStore = create((set, get) => ({
             currentStreak: state.engagementMetrics.currentStreak,
             totalProjects: state.engagementMetrics.totalProjects,
             heatmapData: state.engagementMetrics.heatmapData,
-            // 'createdAt' and 'uid' are set once at creation and typically not updated
-            // 'photoURL' usually comes from Auth, can be updated if your app supports it
+            lastActiveDate: state.user.lastActiveDate || null
         };
-        batch.update(userRef, userUpdateData); // Use update to modify existing fields without overwriting everything
+        batch.set(userRef, userUpdateData, { merge: true }); // Always use set with merge for robustness
 
         // 2. Update roadmaps sub-collection (users/{uid}/roadmaps)
         // Iterate through all sessions and update them

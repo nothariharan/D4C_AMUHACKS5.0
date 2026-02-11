@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Clock } from 'lucide-react'
 
-export function GoalInput({ onSubmit }) {
+export function GoalInput({ onSubmit, disabled }) {
     const [goal, setGoal] = useState('')
     const [deadline, setDeadline] = useState('')
     const [step, setStep] = useState(1) // 1 = Goal, 2 = Deadline
     const [isLoading, setIsLoading] = useState(false)
 
     const handleSubmit = async () => {
-        if (isLoading || deadline.length === 0) return
+        if (isLoading || disabled || deadline.length === 0) return
         setIsLoading(true)
         try {
             await onSubmit(goal, deadline)

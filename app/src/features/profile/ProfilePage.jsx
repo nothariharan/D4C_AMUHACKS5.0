@@ -1,6 +1,8 @@
-import { X, Flame, Trophy, Zap, Target, Edit3 } from 'lucide-react'
+import { X, Flame, Trophy, Zap, Target, Edit3, LogOut } from 'lucide-react'
 import { useStore } from '../../lib/store'
 import { ContributionGrid } from '../auth/ContributionGrid'
+import { auth } from '../../lib/firebase'
+import { signOut } from 'firebase/auth'
 
 export function ProfilePage({ onClose }) {
     const { user, sessions, activeSessionId, engagementMetrics } = useStore()
@@ -22,6 +24,15 @@ export function ProfilePage({ onClose }) {
 
     // Primary Skill (Just use current role for now)
     const primarySkill = activeSession?.role || "Explorer"
+
+    const handleLogout = async () => {
+        try {
+            await signOut(auth)
+            onClose()
+        } catch (error) {
+            console.error("Logout Error:", error)
+        }
+    }
 
     return (
         <div className="fixed inset-0 z-[100] bg-white/90 backdrop-blur-sm flex items-center justify-center p-4">
@@ -100,10 +111,10 @@ export function ProfilePage({ onClose }) {
                                 <Edit3 size={16} /> Edit Profile
                             </button>
                             <button
-                                // onClick={logout} // Todo: Wire up logout
-                                className="flex-1 md:flex-none px-4 py-2 border-2 border-black bg-white hover:bg-brutal-red hover:text-white transition-colors font-bold text-sm uppercase"
+                                onClick={handleLogout}
+                                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 border-2 border-black bg-white hover:bg-brutal-red hover:text-white transition-colors font-bold text-sm uppercase"
                             >
-                                Logout
+                                <LogOut size={16} /> Logout
                             </button>
                         </div>
                     </div>

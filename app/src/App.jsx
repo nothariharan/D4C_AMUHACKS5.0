@@ -24,6 +24,8 @@ function App() {
     logoutUser,              // For clearing state on logout
     setEngagementMetrics,    // To populate engagementMetrics from Firestore
     setSessions,             // To populate sessions (roadmaps) from Firestore
+    setInitialLoadComplete,  // To mark hydration as done
+    isInitialLoadComplete,   // Guard for UI
     setActiveSessionId,      // To set the active session after loading
     sessions,
     activeSessionId,
@@ -111,7 +113,8 @@ function App() {
           }
         });
         console.log("Loaded sessions from Firestore:", loadedSessions);
-        setSessions(loadedSessions); // Update Zustand store with loaded roadmaps
+        setSessions(loadedSessions); // Update Zustand store with loaded roadmaps (merges with local if any)
+        setInitialLoadComplete(true); // Hydration done
 
         if (firstSessionId) {
           setActiveSessionId(firstSessionId); // Set the first loaded session as active
@@ -122,6 +125,7 @@ function App() {
         // User is signed out.
         console.log("No Firebase user is signed in.");
         logoutUser(); // Clear all user-related state in Zustand
+        setInitialLoadComplete(true); // Don't block guest users
       }
     });
 
@@ -370,7 +374,7 @@ function App() {
               className="w-full flex justify-center"
             >
               {phase === 'landing' && (
-                <GoalInput onSubmit={handleGoalSubmit} />
+                <GoalInput onSubmit={handleGoalSubmit} disabled={!isInitialLoadComplete} />
               )}
 
               {phase === 'assessment' && (
