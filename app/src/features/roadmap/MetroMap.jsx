@@ -241,12 +241,9 @@ export function MetroMap() {
 
                                                                     {/* Sub -> Task Lines */}
                                                                     {expandedSubNodes[sub.id] && sub.tasks?.map((task, j) => {
-                                                                        const taskTotal = sub.tasks.length
-                                                                        const taskAngleDeg = angleDeg + (j - taskTotal / 2) * 45 // Wider spread
-                                                                        const taskAngleRad = (taskAngleDeg * Math.PI) / 180
-                                                                        const taskRadius = 180 // Increased distance
-                                                                        const taskX = subX + Math.cos(taskAngleRad) * taskRadius;
-                                                                        const taskY = subY + Math.sin(taskAngleRad) * taskRadius;
+                                                                        const taskDistance = 150 + j * 80 // Linear stack outwards
+                                                                        const taskX = subX + Math.cos(angleRad) * taskDistance;
+                                                                        const taskY = subY + Math.sin(angleRad) * taskDistance;
 
                                                                         return (
                                                                             <motion.line
@@ -323,17 +320,15 @@ export function MetroMap() {
                                                                         {/* Task Nodes for this SubNode */}
                                                                         <AnimatePresence>
                                                                             {expandedSubNodes[sub.id] && sub.tasks?.map((task, j) => {
-                                                                                const taskTotal = sub.tasks.length
-                                                                                const taskAngleDeg = angleDeg + (j - taskTotal / 2) * 45 // Wider spread
-                                                                                const taskAngleRad = (taskAngleDeg * Math.PI) / 180
-                                                                                const taskRadius = 180 // Increased distance
-                                                                                const taskX = subX + Math.cos(taskAngleRad) * taskRadius;
-                                                                                const taskY = subY + Math.sin(taskAngleRad) * taskRadius;
+                                                                                const taskDistance = 150 + j * 80 // Linear stack outwards
+                                                                                // Calculate relative position to the sub-node (which is already at subX, subY)
+                                                                                const taskX = Math.cos(angleRad) * taskDistance;
+                                                                                const taskY = Math.sin(angleRad) * taskDistance;
 
                                                                                 return (
                                                                                     <TaskNode
                                                                                         key={`${sub.id}-task-${j}`}
-                                                                                        centerX={taskX} centerY={taskY} parentX={subX} parentY={subY}
+                                                                                        centerX={taskX} centerY={taskY} parentX={0} parentY={0}
                                                                                         data={task}
                                                                                         onClick={() => setCurrentTask({ nodeId: node.id, subNodeId: sub.id, taskIndex: j })}
                                                                                     />
