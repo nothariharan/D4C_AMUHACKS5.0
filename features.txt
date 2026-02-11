@@ -1,0 +1,60 @@
+# Just Ask - Feature Breakdown
+*State as of Feb 2026*
+
+## 1. Core Core (The "Goal-First" Engine)
+- **Design System**: Neo-Brutalist Aesthetic
+    - High contrast black/white/yellow palette.
+    - Heavy borders (3px) and hard shadows.
+    - Custom "Time of Day" dynamic background theme.
+- **Goal Input Console**:
+    - Typewriter-style input for career goals.
+    - "TEST" Mode: Entering "TEST" triggers a mock data flow for instant demoing without API costs.
+
+## 2. Skill Trap (Gap Analysis)
+- **Swipe Stack Interface**:
+    - Tinder-style assessment for rapid skill diagnosis.
+    - Left Swipe: "Don't Know" (Adds to gap).
+    - Right Swipe: "Know It" (Skipped).
+- **Gemini AI Integration**:
+    - Automatically generates 10 foundational questions based on the specific career goal input.
+
+## 3. Metro Map (The Roadmap)
+- **Non-Linear Visualization**:
+    - Roadmap displayed as a transit map, not a boring list.
+    - **Main Nodes**: Major milestones (e.g., "JavaScript").
+    - **Sub Nodes**: Specific topics (e.g., "Async/Await").
+    - **Task Nodes**: Actionable micro-tasks.
+- **Layout Logic (Radial Stack)**:
+    - **Zero-Overlap Design**: Task nodes stack linearly outwards from sub-nodes to prevent visual clutter.
+    - **Vertical Branching**: Sub-nodes vertically branch off main lines to keep the "main track" clear.
+- **Interactivity**:
+    - Pan & Zoom capability (Infinite canvas feel).
+    - Click-to-expand nodes.
+    - "Evidence based" completion flow (Mock).
+
+## 4. User System & Gamification
+- **Persistence**:
+    - LocalStorage persistence via Zustand (saves progress across reloads).
+- **"Progress Trap" Authentication**:
+    - Allows guests to start immediately.
+    - Triggers "Sign Up to Save Streak" modal after 1 task completion (Engagement hook).
+- **Profile Page ("Trading Card")**:
+    - **Visual Stats**:
+        - **Streak Counter**: Tracks consecutive days active.
+        - **Velocity**: Average tasks completed per week.
+        - **Total Wins**: Lifetime tasks completed.
+    - **Consistency Heatmap**:
+        - GitHub-style contribution graph.
+        - **Yellow-Scale Theme**: Custom monochrome yellow intensity scale.
+    - **Identity**:
+        - Display Name & Membership Date.
+    - **Access**:
+        - Triggered via top-right Header Icon.
+
+## 5. Technical Stack
+- **Frontend**: React + Vite
+- **Styling**: Tailwind CSS (Custom Config)
+- **State**: Zustand + Persist Middleware
+- **Motion**: Framer Motion (Page transitions, node expansions)
+- **Icons**: Lucide React
+- **AI**: Google Gemini API (Content generation)

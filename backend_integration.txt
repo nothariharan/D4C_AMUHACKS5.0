@@ -1,0 +1,135 @@
+[BACKEND INTEGRATION GUIDE: JUST ASK]
+
+This guide outlines how to connect the existing React/Zustand frontend to Firebase (Auth & Firestore) as specified in the PRD.
+
+================================================================================
+PHASE 1: PROJECT SETUP & CONFIGURATION
+================================================================================
+
+1. Initialize Firebase Project
+   - Go to Firebase Console -> Add Project "Just Ask".
+   - Enable "Authentication" (Google Sign-In).
+   - Enable "Firestore Database" (Start in Test Mode).
+   - Register Web App -> Copy config object.
+
+2. Infrastructure Files
+   - Create `src/lib/firebase.js`:
+     import { initializeApp } from "firebase/app";
+     import { getAuth, GoogleAuthProvider } from "firebase/auth";
+     import { getFirestore } from "firebase/firestore";
+     
+     const firebaseConfig = {
+       apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+       authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+       projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+       storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+       messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+       appId: import.meta.env.VITE_FIREBASE_APP_ID
+     };
+     
+     const app = initializeApp(firebaseConfig);
+     export const auth = getAuth(app);
+     export const db = getFirestore(app);
+     export const googleProvider = new GoogleAuthProvider();
+
+   - Update `.env`:
+     Add VITE_FIREBASE_... variables from the console.
+
+================================================================================
+PHASE 2: AUTHENTICATION (Replacing Local Auth)
+================================================================================
+
+1. Update `store.js` (Zustand)
+   - Remove manual `login/logout` logic.
+   - Use `onAuthStateChanged` listener in a `useEffect` inside `App.jsx` (or a dedicated hook) to sync Firebase user state to Zustand store.
+
+2. Modify `AuthModal.jsx`
+   - Replace the current "Sign Up" button logic.
+   - Implement `signInWithPopup(auth, googleProvider)`.
+   - On success:
+     - Check if user doc exists in Firestore `users/{uid}`.
+     - If not, create it with initial stats (see Schema below).
+
+================================================================================
+PHASE 3: DATABASE SCHEMA (Firestore)
+================================================================================
+
+Based on PRD Section 4.2:
+
+1. Collection: `users`
+   - Document ID: `uid` (from Auth)
+   - Fields:
+     {
+       displayName: string,
+       email: string,
+       createdAt: timestamp,
+       currentStreak: number,
+       totalProjects: number,
+       heatmapData: map/object { "YYYY-MM-DD": intensity_level } 
+     }
+
+2. Sub-Collection: `users/{uid}/roadmaps`
+   - Document ID: `roadmapId` (or `active` for simplicity)
+   - Fields:
+     {
+       goal: string,
+       role: string,
+       status: "active" | "completed",
+       nodes: array [ ...node objects with status... ]
+     }
+
+================================================================================
+PHASE 4: STATE SYNCHRONIZATION (The Critical Part)
+================================================================================
+
+Currently, `store.js` uses `persist` (localStorage). You need to change this to a "Sync" model.
+
+Strategy: Optimistic UI Updates + Background Sync
+
+1. Read (On Load/Login):
+   - Fetch `users/{uid}` -> Populate `user` and `engagementMetrics` in Store.
+   - Fetch `users/{uid}/roadmaps` -> Populate `sessions` in Store.
+
+2. Write (On Actions):
+   - When user completes a task (`completeTask` action):
+     - Update Zustand State (Immediate UI feedback).
+     - Trigger async Firestore update:
+       - Update `users/{uid}/roadmaps/{activeSessionId}` (Node status).
+       - Update `users/{uid}` (Streak, Heatmap, Total Project count).
+
+   - Ideally, create a `syncMiddleware` or helper function in `store.js`:
+     
+     const syncToFirestore = async (state) => {
+        if (!state.user) return;
+        // Batch write to Firestore
+        const batch = writeBatch(db);
+        // ... set ops
+        await batch.commit();
+     }
+
+================================================================================
+PHASE 5: SECURITY RULES (Firestore)
+================================================================================
+
+Copy this to your Firebase Console -> Firestore -> Rules:
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      // Allow users to read/write only their own data
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      match /roadmaps/{roadmapId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+  }
+}
+
+================================================================================
+PHASE 6: DEPLOYMENT
+================================================================================
+
+1. Build: `npm run build`
+2. Deploy: `firebase deploy` (requires Firebase CLI) or connect GitHub Repo to Vercel/Netlify.
