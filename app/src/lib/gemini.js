@@ -9,7 +9,7 @@ const client = new OpenAI({
     dangerouslyAllowBrowser: true // Required for client-side usage through Vite
 });
 
-const MODEL = 'arcee-ai/trinity-large-preview:free'; // Using free model requested by user
+const MODEL = 'arcee-ai/trinity-large-preview:free'; // Using specialized model as requested by user
 
 // Helper to robustly parse JSON from AI response
 function parseJSON(text) {
@@ -248,7 +248,7 @@ export async function generateQuestions(role) {
         const text = completion.choices[0].message.content;
         return parseJSON(text) || [];
     } catch (error) {
-        console.error("Gemini Question Error:", error);
+        console.error("AI Question Error:", error?.response?.data || error?.message || error);
         return [];
     }
 }
@@ -315,7 +315,7 @@ export async function generateRoadmap(role, knownSkills, gapSkills) {
         const text = completion.choices[0].message.content;
         return parseJSON(text) || { nodes: [] };
     } catch (error) {
-        console.error("Gemini Roadmap Error:", error);
+        console.error("AI Roadmap Error:", error);
         return { nodes: [] };
     }
 }

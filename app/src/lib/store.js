@@ -93,7 +93,7 @@ export const useStore = create((set, get) => ({
     syncToFirestore: async () => {
         const state = get(); // Get the current state
         if (!state.user || !state.user.uid) {
-            console.warn("Attempted to sync to Firestore without a logged-in user.");
+            // Silently return if not logged in (expected behavior)
             return;
         }
 
@@ -116,7 +116,7 @@ export const useStore = create((set, get) => ({
         // 2. Update roadmaps sub-collection (users/{uid}/roadmaps)
         // Iterate through all sessions and update them
         Object.keys(state.sessions).forEach(sessionId => {
-            const roadmapRef = doc(db, "users", userUid, "roadmaps", sessionId);
+            const roadmapRef = doc(db, "users", userUid, "goals", sessionId);
             const sessionData = state.sessions[sessionId];
             // Use set with merge:true to update or create roadmap documents
             batch.set(roadmapRef, sessionData, { merge: true });
@@ -170,8 +170,32 @@ export const useStore = create((set, get) => ({
         return id;
     },
 
-    switchSession: (id) => set({ activeSessionId: id }),
+    switchSession: (id) => {
+        set({ activeSessionId: id });
+        get().setLastActive();
+    },
     setCurrentTask: (ids) => set({ currentTaskIds: ids }),
+
+    setLastActive: () => {
+        set((state) => {
+            const session = state.sessions[state.activeSessionId];
+            if (!session) return {};
+            const todayISO = new Date().toISOString();
+            const todayYYYYMMDD = todayISO.split('T')[0];
+
+            return {
+                sessions: {
+                    ...state.sessions,
+                    [state.activeSessionId]: {
+                        ...session,
+                        lastActiveDate: todayISO
+                    }
+                },
+                user: state.user ? { ...state.user, lastActiveDate: todayYYYYMMDD } : state.user
+            };
+        });
+        get().syncToFirestore();
+    },
 
     setQuestions: (questions) => {
         set(state => {

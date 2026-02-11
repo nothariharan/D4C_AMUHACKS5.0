@@ -6,6 +6,17 @@ export function GoalInput({ onSubmit }) {
     const [goal, setGoal] = useState('')
     const [deadline, setDeadline] = useState('')
     const [step, setStep] = useState(1) // 1 = Goal, 2 = Deadline
+    const [isLoading, setIsLoading] = useState(false)
+
+    const handleSubmit = async () => {
+        if (isLoading || deadline.length === 0) return
+        setIsLoading(true)
+        try {
+            await onSubmit(goal, deadline)
+        } finally {
+            setIsLoading(false)
+        }
+    }
 
     const handleGoalKeyDown = (e) => {
         if (e.key === 'Enter' && goal.length > 3) {
@@ -14,8 +25,8 @@ export function GoalInput({ onSubmit }) {
     }
 
     const handleDeadlineKeyDown = (e) => {
-        if (e.key === 'Enter' && deadline.length > 0) {
-            onSubmit(goal, deadline)
+        if (e.key === 'Enter') {
+            handleSubmit()
         }
     }
 
@@ -87,10 +98,11 @@ export function GoalInput({ onSubmit }) {
                                 autoFocus
                             />
                             <button
-                                onClick={() => deadline.length > 0 && onSubmit(goal, deadline)}
-                                className={`ml-2 p-2 bg-brutal-black text-white hover:bg-brutal-yellow hover:text-black transition-opacity ${deadline.length > 0 ? 'opacity-100' : 'opacity-0'}`}
+                                onClick={handleSubmit}
+                                disabled={isLoading || deadline.length === 0}
+                                className={`ml-2 p-2 bg-brutal-black text-white hover:bg-brutal-yellow hover:text-black transition-all ${deadline.length > 0 ? 'opacity-100' : 'opacity-0'} ${isLoading ? 'animate-pulse cursor-not-allowed' : ''}`}
                             >
-                                <ArrowRight size={24} strokeWidth={3} />
+                                {isLoading ? <Clock size={24} className="animate-spin" /> : <ArrowRight size={24} strokeWidth={3} />}
                             </button>
                         </div>
                         <button

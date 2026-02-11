@@ -3,6 +3,7 @@ import { onAuthStateChanged } from 'firebase/auth'; // Firebase Auth
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore'; // Firestore functions
 import { auth, db } from './lib/firebase'; // Consolidated Firebase imports (db added)
 import { useStore } from './lib/store'; // Consolidated Zustand store import
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Your existing component imports
 import { GoalInput } from './features/landing/GoalInput';
@@ -93,8 +94,8 @@ function App() {
           // or guiding the user through a setup process.
         }
 
-        // 3. Fetch Roadmaps (sessions) from the sub-collection in Firestore
-        const roadmapsCollectionRef = collection(db, "users", firebaseUser.uid, "roadmaps");
+        // 3. Fetch Goals (sessions) from the sub-collection in Firestore
+        const roadmapsCollectionRef = collection(db, "users", firebaseUser.uid, "goals");
         const roadmapsSnapshot = await getDocs(roadmapsCollectionRef);
         const loadedSessions = {};
         let firstSessionId = null; // To set the activeSessionId if any roadmaps exist
@@ -359,19 +360,30 @@ function App() {
 
         {/* Phase Switcher */}
         <div className="w-full flex justify-center mt-2 min-h-[400px]">
-          {phase === 'landing' && (
-            <GoalInput onSubmit={handleGoalSubmit} />
-          )}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeSessionId + phase}
+              initial={{ x: 100, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -100, opacity: 0 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 100 }}
+              className="w-full flex justify-center"
+            >
+              {phase === 'landing' && (
+                <GoalInput onSubmit={handleGoalSubmit} />
+              )}
 
-          {phase === 'assessment' && (
-            <SwipeStack />
-          )}
+              {phase === 'assessment' && (
+                <SwipeStack />
+              )}
 
-          {phase === 'roadmap' && (
-            <div className="w-full">
-              <MetroMap />
-            </div>
-          )}
+              {phase === 'roadmap' && (
+                <div className="w-full">
+                  <MetroMap />
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         {/* Feature Grid (Only on Landing) */}
