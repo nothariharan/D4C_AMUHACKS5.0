@@ -375,3 +375,81 @@ export async function generateRoadmap(role, knownSkills, gapSkills) {
         return { nodes: [] };
     }
 }
+
+export async function generateManifest(userData) {
+    if (userData.isTest || !API_KEY || API_KEY.includes('...')) {
+        return {
+            subject: userData.name || "Test Subject",
+            status: {
+                streak: "12 Days",
+                total: "42 Nodes Completed",
+                projects: "3 Live Roadmaps"
+            },
+            cargo: [
+                {
+                    role: "Frontend Engineer",
+                    highlights: [
+                        "Mastered React State Management within 2 weeks.",
+                        "Built a custom Metro-Map UI using Framer Motion.",
+                        "Successfully integrated OpenRouter API for dynamic content."
+                    ],
+                    verifiedLinks: [
+                        { title: "Metro Map Implementation", url: "https://github.com/test/metro" },
+                        { title: "Zustand Store Architecture", url: "https://github.com/test/store" }
+                    ]
+                }
+            ],
+            logs: [
+                "2026-02-12: System initialized.",
+                "2026-02-13: First node 'Digital Foundations' completed.",
+                "2026-02-14: Deployment flux stabilized. Hirable status: INCREASING."
+            ]
+        };
+    }
+
+    const prompt = `
+    You are the JustAsk Manifest Compiler.
+    Convert the following user learning data into a high-fidelity "Shipping Manifest" resume/portfolio.
+
+    [DATA START]
+    ${JSON.stringify(userData, null, 2)}
+    [DATA END]
+
+    Style: Strictly Brutalist, Technical, Direct, Industrial. Use monospaced look. 
+    Tone: Professional system log. No fluff.
+
+    Output strictly JSON in this format:
+    {
+      "subject": "Full User Name",
+      "status": {
+        "streak": "X Days",
+        "total": "X Nodes Verified",
+        "projects": "X Major Roadmaps"
+      },
+      "cargo": [
+        {
+          "role": "Role Title",
+          "highlights": ["Technical achievement 1", "Technical achievement 2"],
+          "verifiedLinks": [{ "title": "Evidence Title", "url": "Link" }]
+        }
+      ],
+      "logs": [
+        "YYYY-MM-DD: Technical Milestone Reached",
+        "YYYY-MM-DD: Shipment Verified"
+      ]
+    }
+  `;
+
+    try {
+        const completion = await client.chat.completions.create({
+            model: MODEL,
+            messages: [{ role: "user", content: prompt }]
+        });
+
+        const text = completion.choices[0].message.content;
+        return parseJSON(text);
+    } catch (error) {
+        console.error("Manifest Generation Error:", error);
+        return null;
+    }
+}

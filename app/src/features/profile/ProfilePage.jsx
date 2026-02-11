@@ -5,7 +5,7 @@ import { auth } from '../../lib/firebase'
 import { signOut } from 'firebase/auth'
 
 export function ProfilePage({ onClose }) {
-    const { user, sessions, activeSessionId, engagementMetrics } = useStore()
+    const { user, sessions, activeSessionId, engagementMetrics, isLoggedIn } = useStore()
     const activeSession = sessions[activeSessionId]
 
     // Mock data if no user (or "TEST" user)
@@ -13,9 +13,9 @@ export function ProfilePage({ onClose }) {
     const email = user?.email || "guest@justask.dev"
     const memberSince = user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : new Date().toLocaleDateString()
 
-    // Calculate Stats
-    const currentStreak = activeSession?.streak || 0
-    const totalTasks = engagementMetrics?.tasksCompletedTotal || 0
+    // Calculate Stats (Sync with global engagement metrics from Firestore)
+    const currentStreak = engagementMetrics.currentStreak || 0
+    const totalTasks = engagementMetrics.totalProjects || 0
     const totalSessions = Object.keys(sessions).length
 
     // Velocity: Mock calculation (Tasks / Weeks active)
@@ -24,6 +24,12 @@ export function ProfilePage({ onClose }) {
 
     // Primary Skill (Just use current role for now)
     const primarySkill = activeSession?.role || "Explorer"
+
+    // Count Completed Goals (All nodes in a session must be 'completed')
+    const goalsAchieved = Object.values(sessions).filter(s =>
+        s.roadmap?.nodes?.length > 0 &&
+        s.roadmap.nodes.every(n => n.status === 'completed')
+    ).length
 
     const handleLogout = async () => {
         try {
@@ -96,8 +102,26 @@ export function ProfilePage({ onClose }) {
                 The current implementation has mixed colors. Let's stick with it or modify it later if strictly yellow is needed.
                 For now we just render it. 
             */}
-                        <ContributionGrid />
+                        <ContributionGrid heatmapData={engagementMetrics.heatmapData} />
                     </div>
+
+                    {/* Goals Achieved Counter Section (Only for logged in users) */}
+                    {isLoggedIn && (
+                        <div className="flex items-center justify-between p-6 bg-brutal-white border-3 border-black shadow-brutal">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-white border-3 border-black shadow-[4px_4px_0px_0px_#000]">
+                                    <Trophy size={32} className="text-brutal-yellow" />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="font-mono text-xs uppercase text-gray-400 font-bold line-through">Placeholder</span>
+                                    <span className="text-2xl font-black uppercase tracking-tighter">Goals Achieved</span>
+                                </div>
+                            </div>
+                            <div className="text-6xl font-black bg-black text-white px-6 py-2 shadow-[8px_8px_0px_0px_#FFD700]">
+                                {goalsAchieved}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Account Details / Actions */}
                     <div className="flex flex-col md:flex-row justify-between items-end gap-4 mt-auto">
@@ -107,15 +131,24 @@ export function ProfilePage({ onClose }) {
                         </div>
 
                         <div className="flex gap-3 w-full md:w-auto">
-                            <button className="flex-1 md:flex-none flex items-center gap-2 px-4 py-2 border-2 border-black bg-gray-100 hover:bg-brutal-yellow transition-colors font-bold text-sm uppercase">
-                                <Edit3 size={16} /> Edit Profile
-                            </button>
-                            <button
-                                onClick={handleLogout}
-                                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 border-2 border-black bg-white hover:bg-brutal-red hover:text-white transition-colors font-bold text-sm uppercase"
-                            >
-                                <LogOut size={16} /> Logout
-                            </button>
+                            {!isLoggedIn ? (
+                                <button
+                                    onClick={() => {
+                                        const { openTrap } = useStore.getState()
+                                        openTrap()
+                                    }}
+                                    className="w-full md:w-48 flex items-center justify-center gap-2 px-6 py-4 border-4 border-black bg-brutal-yellow hover:translate-y-0.5 hover:shadow-none transition-all font-black text-lg uppercase shadow-[4px_4px_0px_0px_#000]"
+                                >
+                                    <LogOut size={20} className="rotate-180" /> Login Now
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 border-2 border-black bg-white hover:bg-brutal-red hover:text-white transition-colors font-bold text-sm uppercase"
+                                >
+                                    <LogOut size={16} /> Logout
+                                </button>
+                            )}
                         </div>
                     </div>
 

@@ -14,9 +14,10 @@ import { Sidebar } from './components/layout/Sidebar';
 import { AuthModal } from './features/auth/AuthModal';
 import { ContributionGrid } from './features/auth/ContributionGrid';
 import { BlueprintExchange } from './features/social/BlueprintExchange';
+import { TheManifest } from './features/manifest/TheManifest';
 import { generateTailoringQuestions } from './lib/gemini';
 
-import { User } from 'lucide-react';
+import { User, Zap, Flame, Clock, Timer, AlertTriangle, Volume2, VolumeX, Play, SkipForward, Terminal } from 'lucide-react';
 import { ProfilePage } from './features/profile/ProfilePage';
 import { LoadingScreen } from './components/common/LoadingScreen';
 
@@ -41,6 +42,9 @@ function App() {
     engagementMetrics,       // To display user-specific metrics
     showExchange,
     setShowExchange,
+    showManifest,
+    setShowManifest,
+    compileManifest
   } = useStore();
 
   const activeSession = sessions[activeSessionId];
@@ -76,22 +80,33 @@ function App() {
           const userDataFromFirestore = userDocSnap.data();
           console.log("User data from Firestore:", userDataFromFirestore);
 
-          // Update user in Zustand with Firestore-specific fields like lastActiveDate
-          // This is crucial for streak calculations
+          // --- Streak Decay Logic ---
+          const today = new Date().toISOString().split('T')[0];
+          const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+          let currentStreak = userDataFromFirestore.currentStreak || 0;
+          const lastActive = userDataFromFirestore.lastActiveDate;
+
+          if (currentStreak > 0 && lastActive && lastActive !== today && lastActive !== yesterday) {
+            console.log("Streak decayed - resetting to 0");
+            currentStreak = 0;
+            // The next syncToFirestore will persist this 0 to the DB
+          }
+
+          // Update user in Zustand with Firestore-specific fields
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             displayName: firebaseUser.displayName,
             photoURL: firebaseUser.photoURL,
-            lastActiveDate: userDataFromFirestore.lastActiveDate, // Add this if you track it in the user doc
+            lastActiveDate: userDataFromFirestore.lastActiveDate,
           });
 
-          // Set engagementMetrics in Zustand from Firestore data
+          // Set engagementMetrics in Zustand (using decayed streak if applicable)
           setEngagementMetrics({
-            currentStreak: userDataFromFirestore.currentStreak || 0,
+            currentStreak: currentStreak,
             totalProjects: userDataFromFirestore.totalProjects || 0,
             heatmapData: userDataFromFirestore.heatmapData || {},
-            showTrap: userDataFromFirestore.showTrap ?? false, // Get showTrap from Firestore if you persist it
+            showTrap: userDataFromFirestore.showTrap ?? false,
           });
 
         } else {
@@ -263,6 +278,13 @@ function App() {
       {/* AuthModal will appear based on engagementMetrics.showTrap state */}
       {engagementMetrics.showTrap && <AuthModal />}
       {showProfile && <ProfilePage onClose={() => setShowProfile(false)} />}
+      {showExchange && (
+        <BlueprintExchange onClose={() => setShowExchange(false)} />
+      )}
+
+      {showManifest && (
+        <TheManifest onClose={() => setShowManifest(false)} />
+      )}
 
       {/* Profile Icon - Top Right Absolute */}
       <button
@@ -292,20 +314,20 @@ function App() {
 
               <div className="flex gap-3 flex-wrap items-center">
                 {/* Day Counter */}
-                <div className="flex items-center gap-1 bg-black text-white px-4 py-2 font-mono text-base font-bold">
-                  ⚡ DAY {dayNumber}/{displayTotalDays}
+                <div className="flex items-center gap-1.5 bg-black text-white px-4 py-2 font-mono text-base font-bold">
+                  <Zap size={18} fill="currentColor" /> DAY {dayNumber}/{displayTotalDays}
                 </div>
                 {/* Streak - Now uses engagementMetrics.currentStreak */}
-                <div className="flex items-center gap-1 bg-brutal-red text-white px-4 py-2 font-mono text-base font-bold">
-                  🔥 STREAK: {engagementMetrics.currentStreak || 0}
+                <div className="flex items-center gap-1.5 bg-brutal-red text-white px-4 py-2 font-mono text-base font-bold">
+                  <Flame size={18} fill="currentColor" /> STREAK: {engagementMetrics.currentStreak || 0}
                 </div>
                 {/* Days Left */}
-                <div className="flex items-center gap-1 bg-brutal-yellow text-black px-4 py-2 font-mono text-base font-bold border-2 border-black">
-                  ⏱️ {daysLeft > 0 ? daysLeft : 0} DAYS LEFT
+                <div className="flex items-center gap-1.5 bg-brutal-yellow text-black px-4 py-1.5 font-mono text-base font-bold border-2 border-black">
+                  <Clock size={18} strokeWidth={3} /> {daysLeft > 0 ? daysLeft : 0} DAYS LEFT
                 </div>
                 {/* Time Today */}
-                <div className="flex items-center gap-1 bg-gray-100 text-black px-4 py-2 font-mono text-base border-2 border-black">
-                  🕐 {Math.floor(timeToday / 60)}h {timeToday % 60}m TODAY
+                <div className="flex items-center gap-1.5 bg-gray-100 text-black px-4 py-1.5 font-mono text-base border-2 border-black">
+                  <Timer size={18} strokeWidth={2.5} /> {Math.floor(timeToday / 60)}h {timeToday % 60}m TODAY
                 </div>
               </div>
             </div>
@@ -317,24 +339,24 @@ function App() {
                 <span className="font-black text-xl uppercase truncate max-w-md">{currentFocusTask ? currentFocusTask.title : 'All caught up! 🎉'}</span>
               </div>
               <div className="flex gap-2">
-                <button onClick={handleStartNow} className="bg-brutal-green text-black px-5 py-2 border-2 border-black font-bold text-base uppercase shadow-[3px_3px_0px_0px_#000] hover:translate-y-0.5 hover:shadow-none transition-all">
-                  ▶ Start Now
+                <button onClick={handleStartNow} className="bg-brutal-green text-black px-5 py-2 border-2 border-black font-bold text-base uppercase shadow-[3px_3px_0px_0px_#000] hover:translate-y-0.5 hover:shadow-none transition-all flex items-center gap-2">
+                  <Play size={18} fill="currentColor" /> Start Now
                 </button>
-                <button onClick={handleSkip} className="bg-white text-black px-5 py-2 border-2 border-black font-bold text-base uppercase shadow-[3px_3px_0px_0px_#000] hover:translate-y-0.5 hover:shadow-none transition-all">
-                  ⏭ Skip
+                <button onClick={handleSkip} className="bg-white text-black px-5 py-2 border-2 border-black font-bold text-base uppercase shadow-[3px_3px_0px_0px_#000] hover:translate-y-0.5 hover:shadow-none transition-all flex items-center gap-2">
+                  <SkipForward size={18} fill="currentColor" /> Skip
                 </button>
                 <button
                   onClick={() => setShowReplan(true)}
-                  className="bg-brutal-red/10 text-brutal-red px-4 py-2 border-2 border-brutal-red font-bold text-sm uppercase shadow-[2px_2px_0px_0px_rgba(239,68,68,0.5)] hover:translate-y-0.5 hover:shadow-none transition-all"
+                  className="bg-brutal-red/10 text-brutal-red px-4 py-2 border-2 border-brutal-red font-bold text-sm uppercase shadow-[2px_2px_0px_0px_rgba(239,68,68,0.5)] hover:translate-y-0.5 hover:shadow-none transition-all flex items-center gap-2"
                 >
-                  ⚠️ Life Happened
+                  <AlertTriangle size={18} strokeWidth={3} /> Life Happened
                 </button>
                 <button
                   onClick={() => setSoundOn(!soundOn)}
-                  className={`px-2 py-1.5 border-2 border-black text-sm transition-all ${soundOn ? 'bg-brutal-yellow' : 'bg-white'}`}
+                  className={`px-3 py-1.5 border-2 border-black text-sm transition-all ${soundOn ? 'bg-brutal-yellow' : 'bg-white'} flex items-center justify-center`}
                   title={soundOn ? 'Sound On' : 'Sound Off'}
                 >
-                  {soundOn ? '🔊' : '🔇'}
+                  {soundOn ? <Volume2 size={18} strokeWidth={3} /> : <VolumeX size={18} strokeWidth={3} />}
                 </button>
               </div>
             </div>
@@ -373,34 +395,30 @@ function App() {
         {/* Phase Switcher */}
         <div className="w-full flex justify-center mt-12 min-h-[400px]">
           <AnimatePresence mode="wait">
-            <motion.div
-              key={activeSessionId + phase + showExchange}
-              initial={{ x: 100, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -100, opacity: 0 }}
-              transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-              className="w-full flex justify-center"
-            >
-              {showExchange ? (
-                <BlueprintExchange />
-              ) : (
-                <>
-                  {phase === 'landing' && (
-                    <GoalInput onSubmit={handleGoalSubmit} disabled={!isInitialLoadComplete} />
-                  )}
+            {!showExchange && (
+              <motion.div
+                key={activeSessionId + phase}
+                initial={{ x: 100, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -100, opacity: 0 }}
+                transition={{ type: 'spring', damping: 20, stiffness: 100 }}
+                className="w-full flex justify-center"
+              >
+                {phase === 'landing' && (
+                  <GoalInput onSubmit={handleGoalSubmit} disabled={!isInitialLoadComplete} />
+                )}
 
-                  {(phase === 'assessment' || phase === 'blueprint-assessment') && (
-                    <SwipeStack isTailoring={phase === 'blueprint-assessment'} />
-                  )}
+                {(phase === 'assessment' || phase === 'blueprint-assessment') && (
+                  <SwipeStack isTailoring={phase === 'blueprint-assessment'} />
+                )}
 
-                  {phase === 'roadmap' && (
-                    <div className="w-full">
-                      <MetroMap />
-                    </div>
-                  )}
-                </>
-              )}
-            </motion.div>
+                {phase === 'roadmap' && (
+                  <div className="w-full">
+                    <MetroMap />
+                  </div>
+                )}
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
 
@@ -446,52 +464,54 @@ function App() {
       </div>
 
       {/* Emergency Replan Modal */}
-      {showReplan && (
-        <div className="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white border-3 border-black shadow-brutal max-w-md w-full">
-            <div className="bg-brutal-red text-white px-4 py-3 font-bold font-mono text-sm uppercase tracking-wider">
-              ⚠️ Life Happened — That's OK
-            </div>
-            <div className="p-6 space-y-4">
-              <p className="font-mono text-sm text-gray-600">
-                Plans adapt. You're not quitting — you're being realistic. How many extra days do you need?
-              </p>
-              <div className="flex items-center gap-4">
-                <input
-                  type="range"
-                  min="1"
-                  max="30"
-                  value={replanDays}
-                  onChange={(e) => setReplanDays(Number(e.target.value))}
-                  className="flex-1 accent-brutal-red"
-                />
-                <span className="font-black text-2xl font-mono min-w-[60px] text-center">+{replanDays}d</span>
+      {
+        showReplan && (
+          <div className="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white border-3 border-black shadow-brutal max-w-md w-full">
+              <div className="bg-brutal-red text-white px-4 py-3 font-bold font-mono text-sm uppercase tracking-wider">
+                ⚠️ Life Happened — That's OK
               </div>
-              <p className="font-mono text-xs text-gray-400">
-                New deadline: {activeSession?.deadline ? new Date(new Date(activeSession.deadline).getTime() + replanDays * 86400000).toLocaleDateString() : 'N/A'}
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    // TODO: wire to store to actually update deadline (and then syncToFirestore)
-                    setShowReplan(false);
-                  }}
-                  className="flex-1 bg-brutal-yellow text-black py-2 border-2 border-black font-bold text-sm uppercase shadow-brutal hover:translate-y-0.5 hover:shadow-none transition-all"
-                >
-                  Extend Plan
-                </button>
-                <button
-                  onClick={() => setShowReplan(false)}
-                  className="px-4 py-2 border-2 border-black font-bold text-sm uppercase hover:bg-gray-100 transition-all"
-                >
-                  Cancel
-                </button>
+              <div className="p-6 space-y-4">
+                <p className="font-mono text-sm text-gray-600">
+                  Plans adapt. You're not quitting — you're being realistic. How many extra days do you need?
+                </p>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min="1"
+                    max="30"
+                    value={replanDays}
+                    onChange={(e) => setReplanDays(Number(e.target.value))}
+                    className="flex-1 accent-brutal-red"
+                  />
+                  <span className="font-black text-2xl font-mono min-w-[60px] text-center">+{replanDays}d</span>
+                </div>
+                <p className="font-mono text-xs text-gray-400">
+                  New deadline: {activeSession?.deadline ? new Date(new Date(activeSession.deadline).getTime() + replanDays * 86400000).toLocaleDateString() : 'N/A'}
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      // TODO: wire to store to actually update deadline (and then syncToFirestore)
+                      setShowReplan(false);
+                    }}
+                    className="flex-1 bg-brutal-yellow text-black py-2 border-2 border-black font-bold text-sm uppercase shadow-brutal hover:translate-y-0.5 hover:shadow-none transition-all"
+                  >
+                    Extend Plan
+                  </button>
+                  <button
+                    onClick={() => setShowReplan(false)}
+                    className="px-4 py-2 border-2 border-black font-bold text-sm uppercase hover:bg-gray-100 transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }
 

@@ -1,60 +1,51 @@
-# Just Ask - Feature Breakdown
-*State as of Feb 2026*
+# Just Ask - Comprehensive Feature Ecosystem
+*State as of Feb 2026 - The Infrastructure & Social Update*
 
-## 1. Core Core (The "Goal-First" Engine)
-- **Design System**: Neo-Brutalist Aesthetic
-    - High contrast black/white/yellow palette.
-    - Heavy borders (3px) and hard shadows.
-    - Custom "Time of Day" dynamic background theme.
-- **Goal Input Console**:
-    - Typewriter-style input for career goals.
-    - "TEST" Mode: Entering "TEST" triggers a mock data flow for instant demoing without API costs.
+## 1. Goal-First Intelligence
+- **Typewriter Console**: A focused, minimalist input terminal. Type your career goal (e.g., "Fullstack Developer") and watch Gemini architect your path.
+- **Dynamic Atmosphere**: The background shifts based on the time of day, creating a "live workspace" feel. HSL-tailored colors ensure high readability in both dawn and dusk modes.
 
-## 2. Skill Trap (Gap Analysis)
-- **Swipe Stack Interface**:
-    - Tinder-style assessment for rapid skill diagnosis.
-    - Left Swipe: "Don't Know" (Adds to gap).
-    - Right Swipe: "Know It" (Skipped).
-- **Gemini AI Integration**:
-    - Automatically generates 10 foundational questions based on the specific career goal input.
+## 2. Skill Trap (Cognitive Assessment)
+- **Swipe Diagnosis**: A rapid-fire "Tinder" interface for skills. Gemini generates specific domain questions based on your goal; you swipe left for "Unknown" or right for "Known".
+- **Intelligent Branching**: The assessment doesn't just list skills—it structures them. Known skills are marked as 'Skipped' in your roadmap, while gaps are highlighted for immediate focus.
 
-## 3. Metro Map (The Roadmap)
-- **Non-Linear Visualization**:
-    - Roadmap displayed as a transit map, not a boring list.
-    - **Main Nodes**: Major milestones (e.g., "JavaScript").
-    - **Sub Nodes**: Specific topics (e.g., "Async/Await").
-    - **Task Nodes**: Actionable micro-tasks.
-- **Layout Logic (Radial Stack)**:
-    - **Zero-Overlap Design**: Task nodes stack linearly outwards from sub-nodes to prevent visual clutter.
-    - **Vertical Branching**: Sub-nodes vertically branch off main lines to keep the "main track" clear.
-- **Interactivity**:
-    - Pan & Zoom capability (Infinite canvas feel).
-    - Click-to-expand nodes.
-    - "Evidence based" completion flow (Mock).
+## 3. Metro Map (The Visual Backbone)
+- **Transit-Style Canvas**: Your roadmap is visualized as an infinite, zoomable Metro Map. Milestones are "Tracks", and specific topics are "Stations".
+- **Zero-Overlap Architecture**: An intelligent radial stacking algorithm Ensures that even complex goals with 50+ tasks stay readable and clutter-free.
+- **milestone Lifecycle**: Nodes transition through states: `Locked` (requires prerequisite), `Active` (current focus), and `Completed` (verified).
 
-## 4. User System & Gamification
-- **Persistence**:
-    - LocalStorage persistence via Zustand (saves progress across reloads).
-- **"Progress Trap" Authentication**:
-    - Allows guests to start immediately.
-    - Triggers "Sign Up to Save Streak" modal after 1 task completion (Engagement hook).
-- **Profile Page ("Trading Card")**:
-    - **Visual Stats**:
-        - **Streak Counter**: Tracks consecutive days active.
-        - **Velocity**: Average tasks completed per week.
-        - **Total Wins**: Lifetime tasks completed.
-    - **Consistency Heatmap**:
-        - GitHub-style contribution graph.
-        - **Yellow-Scale Theme**: Custom monochrome yellow intensity scale.
-    - **Identity**:
-        - Display Name & Membership Date.
-    - **Access**:
-        - Triggered via top-right Header Icon.
+## 4. Execution Dashboard (Getting Things Done)
+- **Next Up Panel**: A persistent "Quick-Action" widget on your dashboard that highlights the top 3 immediate tasks across your entire roadmap. One-click access to start learning.
+- **Today's Quest**: A slide-out checklist for daily sessions. Includes a progress bar and completion "Trophies" to keep momentum high.
+- **Task Thread View**: A deep-dive modal for every task including:
+    - **The Breakdown**: AI-generated conceptual explanations.
+    - **Practice Field**: Real-world questions and hints to test your knowledge.
+    - **Resource Vault**: Curated links and documentation for deep study.
+- **Evidence Vault**: Users can save "Proof of Work" (links, notes, files) for every task, creating a permanent portfolio of their learning journey.
 
-## 5. Technical Stack
-- **Frontend**: React + Vite
-- **Styling**: Tailwind CSS (Custom Config)
-- **State**: Zustand + Persist Middleware
-- **Motion**: Framer Motion (Page transitions, node expansions)
-- **Icons**: Lucide React
-- **AI**: Google Gemini API (Content generation)
+## 5. Roadmap Exchange (Social Infrastructure)
+- **The Community Hub**: A real-time, searchable network of human-curated learning paths.
+- **Real-time Sync**: Using Firebase `onSnapshot`, new roadmaps, votes, and "Steals" appear instantly for all users.
+- **Social Forking (Stealing)**: 
+    - Found a great path? "Steal" it to add it to your profile.
+    - **Lineage (Provenance)**: Forked roadmaps permanently credit the original author (e.g., *"Forked from Shadow Dev"*).
+- **Engagement ecosystem**: 
+    - **Community Voting**: High-contrast upvote/downvote system with global persistence.
+    - **Discovery Tools**: Search by keywords and sort by "NEW", "TOP", or "POPS" (Trending).
+
+## 6. The Goal Drive (Management)
+- **Industrial Sidebar**: Sessions are managed as "Cartridge Disks".
+- **Status Lights**: Real-time LED-style indicators (Green for Active, Red for Missed Deadlines).
+- **Goal Cobwebs**: Over time, inactive roadmaps develop visual "cobwebs" in the sidebar, a subtle nudge to resume your abandoned goals.
+- **Persistent Cloud**: Every action is synced to a personal Firebase Cloud profile, ensuring zero data loss across devices.
+
+## 7. Profile & Gamification
+- **Trading Card Identity**: A high-fidelity profile card featuring:
+    - **The Streak**: Consecutive days of "Deep Work".
+    - **Velocity**: Tasks completed per week.
+    - **Yellow Heatmap**: A monochrome yellow activity grid tracking your consistency across the year.
+- **Time Tracking**: Logged minutes are aggregated into your global stats, measuring raw effort alongside milestones.
+
+## 8. Technical Architecture
+- **Tech Stack**: React 18, Vite, Tailwind (Custom Neo-Brutalist Config), Zustand (Atomic Store), Firebase (Real-time NoSQL & Auth), Framer Motion (120fps UI).
+- **AI Core**: Gemini Pro 1.5 - Orchestrates the initial goal analysis, assessment generation, and roadmap content.

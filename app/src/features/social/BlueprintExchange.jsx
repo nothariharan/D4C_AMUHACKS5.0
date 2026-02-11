@@ -4,7 +4,7 @@ import { db } from '../../lib/firebase'
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore'
 import { useStore } from '../../lib/store'
 import { Odometer } from './Odometer'
-import { Share2, Lock, Unlock, Zap, Ghost, Plus, Eye, Target, Share, RefreshCw, AlertTriangle, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { Share2, Lock, Unlock, Zap, Ghost, Plus, Eye, Target, Share, RefreshCw, AlertTriangle, ThumbsUp, ThumbsDown, Trash2 } from 'lucide-react'
 import { BlueprintPreviewModal } from './BlueprintPreviewModal'
 import { AddRoadmapModal } from './AddRoadmapModal'
 import { PersonalizationChoiceModal } from './PersonalizationChoiceModal'
@@ -14,7 +14,7 @@ export function BlueprintExchange() {
     const [blueprints, setBlueprints] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
-    const { user, subscribeToExchange, voteBlueprint, publishBlueprint, stealBlueprint } = useStore()
+    const { user, subscribeToExchange, voteBlueprint, publishBlueprint, stealBlueprint, unpublishBlueprint } = useStore()
     const [selectedBlueprint, setSelectedBlueprint] = useState(null)
     const [showAddModal, setShowAddModal] = useState(false)
     const [choiceBlueprint, setChoiceBlueprint] = useState(null)
@@ -124,6 +124,11 @@ export function BlueprintExchange() {
                             await voteBlueprint(id, type)
                             // Real-time onSnapshot handles the refresh automatically!
                         }}
+                        onDelete={async (id) => {
+                            if (window.confirm("Remove this roadmap from the global exchange? It won't affect your personal library.")) {
+                                await unpublishBlueprint(id)
+                            }
+                        }}
                     />
                 ))}
             </div>
@@ -144,7 +149,7 @@ export function BlueprintExchange() {
                     <AddRoadmapModal
                         onClose={() => setShowAddModal(false)}
                         onSubmit={async (sessionId) => {
-                            await publishBlueprint(sessionId)
+                            await publishBlueprint(sessionId, true)
                             alert("Roadmap Broadcasted Successfully! 🚀")
                         }}
                     />
@@ -183,8 +188,9 @@ export function BlueprintExchange() {
     )
 }
 
-function BlueprintCard({ blueprint, userId, onClick, onVote }) {
+function BlueprintCard({ blueprint, userId, onClick, onVote, onDelete }) {
     const userVote = blueprint.votes?.[userId];
+    const isOwner = blueprint.authorId === userId;
 
     return (
         <motion.div
@@ -192,6 +198,20 @@ function BlueprintCard({ blueprint, userId, onClick, onVote }) {
             onClick={onClick}
             className="group relative bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-6 flex flex-col h-full hover:shadow-[12px_12px_0px_0px_#000] cursor-pointer transition-all"
         >
+            {/* Delete Option for Owner */}
+            {isOwner && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(blueprint.id);
+                    }}
+                    className="absolute -top-3 -right-3 z-30 bg-brutal-red text-white p-2 border-2 border-black rounded-sm shadow-[4px_4px_0px_0px_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all opacity-0 group-hover:opacity-100 flex items-center gap-2 font-black uppercase text-[10px]"
+                >
+                    <Trash2 size={12} strokeWidth={4} />
+                    UNPUBLISH
+                </button>
+            )}
+
             <div className="flex justify-between items-start mb-4">
                 <div className="flex flex-col">
                     <div className="bg-black text-white px-3 py-1 text-xs font-black uppercase italic w-fit">

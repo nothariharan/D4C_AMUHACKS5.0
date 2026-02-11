@@ -8,7 +8,7 @@ import { create } from 'zustand';
 import { db } from './firebase'; // Ensure db is correctly imported from your firebase.js
 import { doc, writeBatch, Timestamp, collection, query, orderBy, limit, onSnapshot, getDoc, setDoc, runTransaction, increment, deleteDoc } from 'firebase/firestore'; // Import necessary Firestore functions
 
-import { generateRoadmap, parseCareerGoal, generateQuestions } from './gemini';
+import { generateRoadmap, parseCareerGoal, generateQuestions, generateManifest } from './gemini';
 // Assuming uuidv4 is still used for session IDs; if not, use generateId for consistency.
 // import { v4 as uuidv4 } from 'uuid'; // User will need to install this or we use a simple random string
 
@@ -42,6 +42,8 @@ export const useStore = create((set, get) => ({
     activeSessionId: null,
     currentTaskIds: null,   // { nodeId, subNodeId, taskIndex } or null
     showExchange: false,    // Toggles the Blueprint Marketplace view
+    showManifest: false,    // Toggles the Shipping Manifest view
+    manifestData: null,     // Holds the AI-generated manifest
 
     isInitialLoadComplete: false, // Tracks if first Firestore hydration is done
 
@@ -68,6 +70,8 @@ export const useStore = create((set, get) => ({
         sessions: {},
         activeSessionId: null,
         currentTaskIds: null,
+        showManifest: false,
+        manifestData: null,
     }),
 
     // Actions to populate state after fetching from Firestore (Read on Load/Login)
@@ -93,7 +97,55 @@ export const useStore = create((set, get) => ({
         }
     })),
 
+    setShowManifest: (show) => set({ showManifest: show }),
+
+    compileManifest: async () => {
+        const state = get();
+        if (!state.isLoggedIn || !state.user) return;
+
+        // 1. Aggregate Evidence and Progress
+        const evidencePacket = {
+            name: state.user.displayName,
+            isTest: state.user.displayName === 'hari', // Auto-test for user 'hari'
+            metrics: state.engagementMetrics,
+            roadmaps: Object.values(state.sessions).map(s => {
+                const completedNodes = (s.roadmap?.nodes || []).filter(n => n.status === 'completed');
+                const evidenceLinks = [];
+
+                (s.roadmap?.nodes || []).forEach(node => {
+                    (node.subNodes || []).forEach(sub => {
+                        (sub.tasks || []).forEach(task => {
+                            if (task.completed && task.evidence) {
+                                evidenceLinks.push(...task.evidence);
+                            }
+                        });
+                    });
+                });
+
+                return {
+                    goal: s.goal,
+                    role: s.role,
+                    completedCount: completedNodes.length,
+                    totalNodes: (s.roadmap?.nodes || []).length,
+                    evidence: evidenceLinks
+                };
+            })
+        };
+
+        try {
+            const manifest = await generateManifest(evidencePacket);
+            if (manifest) {
+                set({ manifestData: manifest, showManifest: true });
+            }
+        } catch (error) {
+            console.error("Manifest Compilation Error:", error);
+        }
+    },
+
     // Action to manage the "trap" modal visibility (used by AuthModal)
+    openTrap: () => set(state => ({
+        engagementMetrics: { ...state.engagementMetrics, showTrap: true }
+    })),
     closeTrap: () => set(state => ({
         engagementMetrics: { ...state.engagementMetrics, showTrap: false }
     })),
@@ -215,7 +267,6 @@ export const useStore = create((set, get) => ({
             const session = state.sessions[state.activeSessionId];
             if (!session) return {};
             const todayISO = new Date().toISOString();
-            const todayYYYYMMDD = todayISO.split('T')[0];
 
             return {
                 sessions: {
@@ -224,8 +275,7 @@ export const useStore = create((set, get) => ({
                         ...session,
                         lastActiveDate: todayISO
                     }
-                },
-                user: state.user ? { ...state.user, lastActiveDate: todayYYYYMMDD } : state.user
+                }
             };
         });
         get().syncToFirestore();
@@ -350,17 +400,39 @@ export const useStore = create((set, get) => ({
                     roadmap: { ...session.roadmap, nodes: newNodes }
                 }
             };
+            // --- HEATMAP & STREAK LOGIC ---
+            const todayISO = new Date().toISOString();
+            const todayYYYYMMDD = todayISO.split('T')[0];
+            const yesterdayYYYYMMDD = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+            let newCurrentStreak = state.engagementMetrics.currentStreak || 0;
+            const lastActiveDateInUserDoc = state.user?.lastActiveDate;
+
+            if (lastActiveDateInUserDoc === todayYYYYMMDD) {
+                if (newCurrentStreak === 0) newCurrentStreak = 1;
+            } else if (lastActiveDateInUserDoc === yesterdayYYYYMMDD) {
+                newCurrentStreak += 1;
+            } else {
+                newCurrentStreak = 1;
+            }
+
+            const updatedHeatmapData = { ...(state.engagementMetrics.heatmapData || {}) };
+            updatedHeatmapData[todayYYYYMMDD] = (updatedHeatmapData[todayYYYYMMDD] || 0) + 1;
+
             const updatedEngagementMetrics = {
                 ...state.engagementMetrics,
-                nodeInteractions: newInteractions
+                nodeInteractions: newInteractions,
+                currentStreak: newCurrentStreak,
+                heatmapData: updatedHeatmapData
             };
 
             return {
                 sessions: updatedSessions,
-                engagementMetrics: updatedEngagementMetrics
+                engagementMetrics: updatedEngagementMetrics,
+                user: state.user ? { ...state.user, lastActiveDate: todayYYYYMMDD } : null
             };
         });
-        get().syncToFirestore(); // Sync after evidence submission
+        get().syncToFirestore();
         if (get().activeSessionId) get().publishBlueprint(get().activeSessionId);
     },
 
@@ -419,14 +491,15 @@ export const useStore = create((set, get) => ({
             const yesterdayYYYYMMDD = new Date(Date.now() - 86400000).toISOString().split('T')[0]; // YYYY-MM-DD for yesterday
 
             let newCurrentStreak = state.engagementMetrics.currentStreak || 0;
-            const lastActiveDateInUserDoc = state.user?.lastActiveDate; // Assuming lastActiveDate will be on the user doc
+            const lastActiveDateInUserDoc = state.user?.lastActiveDate;
 
             if (lastActiveDateInUserDoc === todayYYYYMMDD) {
-                // Streak continues, already active today (do nothing to streak count)
+                // Already active today. If streak is somehow 0, make it 1 (failsafe for spoiled day)
+                if (newCurrentStreak === 0) newCurrentStreak = 1;
             } else if (lastActiveDateInUserDoc === yesterdayYYYYMMDD) {
-                newCurrentStreak += 1; // Increment streak if active yesterday
+                newCurrentStreak += 1; // Increment streak
             } else {
-                newCurrentStreak = 1; // Reset streak if not consecutive
+                newCurrentStreak = 1; // Start/Restart streak
             }
 
             const updatedHeatmapData = { ...(state.engagementMetrics.heatmapData || {}) };
@@ -530,7 +603,7 @@ export const useStore = create((set, get) => ({
     // BLUEPRINT EXCHANGE ACTIONS
     // ===========================================
 
-    publishBlueprint: async (sessionId) => {
+    publishBlueprint: async (sessionId, force = false) => {
         const state = get();
         const session = state.sessions[sessionId];
         if (!session || !state.user) return;
@@ -539,6 +612,13 @@ export const useStore = create((set, get) => ({
 
         try {
             const existing = await getDoc(blueprintRef);
+
+            // Only proceed if we are forcing it (initial publish) or if it's already in the exchange (syncing)
+            if (!force && !existing.exists()) {
+                console.log("Roadmap is private. Skipping sync to exchange.");
+                return;
+            }
+
             const metadata = existing.exists() ? {
                 stealCount: existing.data().stealCount || 0,
                 upvotes: existing.data().upvotes || 0,
@@ -564,6 +644,32 @@ export const useStore = create((set, get) => ({
             console.log("Blueprint synced to exchange!");
         } catch (error) {
             console.error("Publish Sync Error:", error);
+        }
+    },
+
+    unpublishBlueprint: async (sessionId) => {
+        const state = get();
+        if (!state.user) return;
+
+        const blueprintRef = doc(db, "public_blueprints", sessionId);
+
+        try {
+            const docSnap = await getDoc(blueprintRef);
+            if (!docSnap.exists()) return;
+
+            // Security check: only the author can unpublish (authorId is stored in public_blueprints)
+            if (docSnap.data().authorId !== state.user.uid) {
+                console.error("Unauthorized unpublish attempt");
+                return;
+            }
+
+            await deleteDoc(blueprintRef);
+            console.log("Blueprint removed from exchange!");
+        } catch (error) {
+            console.error("Unpublish Error:", error);
+            if (error.code === 'permission-denied') {
+                console.warn("⚠️ PERMISSION DENIED: You must update your Firestore Security Rules in the Firebase Console to allow deletions on 'public_blueprints'.");
+            }
         }
     },
 
@@ -623,8 +729,9 @@ export const useStore = create((set, get) => ({
             lastActiveDate: new Date().toISOString(),
             isStolen: true,
             provenance, // Store forking history
-            phase: 'assessment', // Always start in assessment phase for stolen blueprints
+            phase: personalize ? 'assessment' : 'roadmap', // Only assess if personalizing
             currentQuestionIndex: 0,
+            questions: blueprint.questions || [],
             answers: {},
             knownSkills: [],
             gapSkills: [],

@@ -1,9 +1,12 @@
 import { useMemo } from 'react'
 import { useStore } from '../../lib/store'
 
-export function ContributionGrid() {
-    const { sessions, activeSessionId } = useStore()
+export function ContributionGrid({ heatmapData: propHeatmapData }) {
+    const { sessions, activeSessionId, engagementMetrics } = useStore()
     const activeSession = sessions[activeSessionId]
+
+    // Use the prop if passed, otherwise use the global engagement metrics, fallback to empty
+    const sourceData = propHeatmapData || engagementMetrics.heatmapData || {}
 
     // Generate data for the last 365 days
     const heatmapData = useMemo(() => {
@@ -12,27 +15,21 @@ export function ContributionGrid() {
         const oneYearAgo = new Date()
         oneYearAgo.setFullYear(today.getFullYear() - 1)
 
-        // Flatten daily logs from active session (or all sessions if we want aggregation)
-        // For simplicity, just use active session logs
-        const logs = activeSession?.dailyLog || {}
-
         // Loop backwards from today to 365 days ago
         for (let d = new Date(today); d >= oneYearAgo; d.setDate(d.getDate() - 1)) {
             const dateStr = d.toISOString().split('T')[0]
-            const log = logs[dateStr]
+            const count = sourceData[dateStr] || 0
 
             let intensity = 0
-            if (log) {
-                if (log.tasksCompleted >= 3) intensity = 4
-                else if (log.tasksCompleted >= 2) intensity = 3
-                else if (log.tasksCompleted >= 1) intensity = 2
-                else if (log.timeSpent > 0) intensity = 1
-            }
+            if (count >= 10) intensity = 4
+            else if (count >= 5) intensity = 3
+            else if (count >= 2) intensity = 2
+            else if (count >= 1) intensity = 1
 
             data.push({ date: dateStr, intensity })
         }
         return data
-    }, [activeSession])
+    }, [sourceData])
 
     // Color map
     const getColor = (intensity) => {
@@ -47,19 +44,23 @@ export function ContributionGrid() {
     }
 
     return (
-        <div className="w-full overflow-x-auto p-4 bg-white border-3 border-black shadow-brutal">
-            <h3 className="font-bold font-mono text-sm mb-2 uppercase flex items-center gap-2">
+        <div className="w-full overflow-x-auto pt-4 pb-4 pl-4 pr-0 bg-white border-3 border-black shadow-brutal mt-2">
+            <h3 className="font-bold font-mono text-sm mb-3 uppercase flex items-center gap-2">
                 Consistency Heatmap
                 <span className="text-xs text-gray-500 font-normal normal-case">(Last 365 Days)</span>
             </h3>
 
-            <div className="flex justify-end gap-1 min-w-max">
-                {/* Reversed Time Flow: Recent data starts on the RIGHT and flows LEFT */}
+            {/* 
+                RTL HANDLING: 
+                'justify-end' pushes the entire grid package flush to the right. 
+                'direction: rtl' ensures columns flow right-to-left internally.
+            */}
+            <div className="flex justify-end w-full">
                 <div className="grid grid-rows-7 grid-flow-col gap-1" style={{ direction: 'rtl' }}>
                     {heatmapData.map((day, i) => (
                         <div
                             key={day.date}
-                            className={`w-3 h-3 ${getColor(day.intensity)} border border-transparent hover:border-black transition-all`}
+                            className={`w-3.5 h-3.5 ${getColor(day.intensity)} border border-transparent hover:border-black transition-all`}
                             title={`${day.date}: Level ${day.intensity}`}
                         />
                     ))}
