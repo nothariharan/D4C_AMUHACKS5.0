@@ -28,3 +28,17 @@ npm run dev
 ```
 
 The app will open at `http://localhost:5173`.
+
+---
+
+## 🛑 Troubleshooting
+
+### Error: "unsupported platform for NOTIFY"
+If you see an error about `notify` or `unsupported platform` when running `npm run dev`:
+
+1.  Delete the `node_modules` folder and `package-lock.json` file inside `app/`.
+2.  Run this command specifically:
+    ```bash
+    npm install --no-optional
+    ```
+3.  Try `npm run dev` again.
