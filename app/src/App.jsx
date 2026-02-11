@@ -359,7 +359,7 @@ function App() {
         )}
 
         {/* Phase Switcher */}
-        <div className="w-full flex justify-center mt-2 min-h-[400px]">
+        <div className="w-full flex justify-center mt-12 min-h-[400px]">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeSessionId + phase}

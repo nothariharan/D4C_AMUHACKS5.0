@@ -46,14 +46,15 @@ export function SwipeStack() {
                 className="fixed inset-0 z-0 pointer-events-none transition-colors duration-200"
             />
 
-            <div className="w-full max-w-md h-[500px] relative flex flex-col items-center justify-center z-10">
-                <div className="absolute top-0 w-full text-center mb-4">
-                    <span className="bg-black text-white px-3 py-1 font-bold font-mono text-sm">
-                        QUESTION {currentQuestionIndex + 1} / {questions.length}
+            <div className="w-full max-w-md h-[600px] relative flex flex-col items-center z-10 pt-12">
+                {/* Question Counter - Moved inside the flow or kept absolute with padding */}
+                <div className="absolute top-2 w-full text-center">
+                    <span className="bg-black text-[#0f0] px-4 py-1.5 border-2 border-white font-black font-mono text-sm shadow-brutal uppercase tracking-widest">
+                        [ SYSTEM_PROBE: {currentQuestionIndex + 1} / {questions.length} ]
                     </span>
                 </div>
 
-                <div className="relative w-full h-full flex items-center justify-center">
+                <div className="relative w-full h-[400px] flex items-center justify-center mt-8">
                     <AnimatePresence
                         custom={direction}
                         mode="wait"
@@ -69,7 +70,7 @@ export function SwipeStack() {
                     </AnimatePresence>
                 </div>
 
-                <div className="flex gap-8 mt-8 z-10">
+                <div className="flex gap-12 mt-12 z-10">
                     <button
                         onClick={() => handleSwipe('left')}
                         className="w-16 h-16 rounded-full border-3 border-black bg-brutal-red flex items-center justify-center shadow-brutal hover:translate-y-1 hover:shadow-none transition-all active:scale-95"
