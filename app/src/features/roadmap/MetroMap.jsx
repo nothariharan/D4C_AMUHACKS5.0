@@ -224,7 +224,7 @@ export function MetroMap() {
                                                             const total = node.subNodes.length
                                                             const angleDeg = (360 / total) * index + 90
                                                             const angleRad = (angleDeg * Math.PI) / 180
-                                                            const radius = 200 // Orbit radius
+                                                            const radius = 300 // Orbit radius (Increased to clear title)
                                                             const subX = Math.cos(angleRad) * radius
                                                             const subY = Math.sin(angleRad) * radius
 
@@ -242,9 +242,9 @@ export function MetroMap() {
                                                                     {/* Sub -> Task Lines */}
                                                                     {expandedSubNodes[sub.id] && sub.tasks?.map((task, j) => {
                                                                         const taskTotal = sub.tasks.length
-                                                                        const taskAngleDeg = angleDeg + (j - taskTotal / 2) * 20 // spread fan-like
+                                                                        const taskAngleDeg = angleDeg + (j - taskTotal / 2) * 45 // Wider spread
                                                                         const taskAngleRad = (taskAngleDeg * Math.PI) / 180
-                                                                        const taskRadius = 120 // Distance from subnode
+                                                                        const taskRadius = 180 // Increased distance
                                                                         const taskX = subX + Math.cos(taskAngleRad) * taskRadius;
                                                                         const taskY = subY + Math.sin(taskAngleRad) * taskRadius;
 
@@ -301,7 +301,7 @@ export function MetroMap() {
                                                                 const total = node.subNodes.length
                                                                 const angleDeg = (360 / total) * index + 90
                                                                 const angleRad = (angleDeg * Math.PI) / 180
-                                                                const radius = 200 // Orbit radius
+                                                                const radius = 300 // Orbit radius
                                                                 const subX = Math.cos(angleRad) * radius
                                                                 const subY = Math.sin(angleRad) * radius
 
@@ -324,9 +324,9 @@ export function MetroMap() {
                                                                         <AnimatePresence>
                                                                             {expandedSubNodes[sub.id] && sub.tasks?.map((task, j) => {
                                                                                 const taskTotal = sub.tasks.length
-                                                                                const taskAngleDeg = angleDeg + (j - taskTotal / 2) * 20 // spread fan-like
+                                                                                const taskAngleDeg = angleDeg + (j - taskTotal / 2) * 45 // Wider spread
                                                                                 const taskAngleRad = (taskAngleDeg * Math.PI) / 180
-                                                                                const taskRadius = 120 // Distance from subnode
+                                                                                const taskRadius = 180 // Increased distance
                                                                                 const taskX = subX + Math.cos(taskAngleRad) * taskRadius;
                                                                                 const taskY = subY + Math.sin(taskAngleRad) * taskRadius;
 
