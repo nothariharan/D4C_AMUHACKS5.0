@@ -5,9 +5,11 @@ import { MetroMap } from './features/roadmap/MetroMap'
 import { useStore } from './lib/store'
 import { parseCareerGoal, generateQuestions } from './lib/gemini'
 import { Sidebar } from './components/layout/Sidebar'
+import { AuthModal } from './features/auth/AuthModal'
+import { ContributionGrid } from './features/auth/ContributionGrid'
 
 function App() {
-  const { sessions, activeSessionId, createSession, setQuestions } = useStore()
+  const { sessions, activeSessionId, createSession, setQuestions, user, isAuthenticated } = useStore()
   const activeSession = sessions[activeSessionId]
   const phase = activeSession ? activeSession.phase : 'landing'
   const [showReplan, setShowReplan] = useState(false)
@@ -38,7 +40,7 @@ function App() {
       const questions = await generateQuestions(result.role)
 
       if (questions && questions.length > 0) {
-        // setQuestions(questions) // This was removed from useStore, assuming it's handled internally by createSession or generateQuestions now
+        setQuestions(questions)
       } else {
         alert('Failed to generate questions. Please try again.')
       }
@@ -107,6 +109,7 @@ function App() {
   return (
     <div className={`min-h-screen ${timeOfDayBg} flex flex-col items-center p-4 relative overflow-hidden transition-colors duration-1000`}>
       <Sidebar />
+      <AuthModal />
 
       {/* Background Dot Pattern */}
       <div className="absolute inset-0 z-0 opacity-20 pointer-events-none"
@@ -178,6 +181,10 @@ function App() {
             <div className="text-center py-1.5 border-t border-gray-200 bg-white">
               <p className="font-mono text-xs text-gray-400 italic">"{quote}"</p>
             </div>
+
+            {/* Heatmap (Visible if we have sessions) */}
+            {activeSession && <ContributionGrid />}
+
           </div>
         ) : (
           /* Landing Header */
@@ -191,6 +198,13 @@ function App() {
             <p className="text-xl md:text-2xl font-mono font-bold bg-brutal-yellow inline-block px-4 py-1 border-3 border-black shadow-brutal transform rotate-1">
               Goal First. Action Always.
             </p>
+
+            {/* User Greeting if logged in */}
+            {isAuthenticated && user && (
+              <div className="mt-4 font-mono text-lg font-bold">
+                Welcome back, <span className="text-brutal-blue">{user.displayName}</span>!
+              </div>
+            )}
           </div>
         )}
 
@@ -213,7 +227,7 @@ function App() {
 
         {/* Feature Grid (Only on Landing) */}
         {phase === 'landing' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mt-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mt-12 mb-12">
             <div className="brutal-border p-6 bg-white shadow-brutal hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all cursor-crosshair">
               <h3 className="font-bold text-xl mb-2 flex items-center gap-2">
                 <span className="w-4 h-4 bg-brutal-red rounded-full border-2 border-black"></span>
@@ -241,6 +255,13 @@ function App() {
                 Track progress, not just tutorials watched.
               </p>
             </div>
+
+            {/* Heatmap on landing too if authed */}
+            {isAuthenticated && (
+              <div className="col-span-3">
+                <ContributionGrid />
+              </div>
+            )}
           </div>
         )}
 

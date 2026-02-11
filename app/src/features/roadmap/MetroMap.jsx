@@ -8,7 +8,7 @@ import { NextUpPanel } from './NextUpPanel'
 import { TodaysQuest } from './TodaysQuest'
 
 export function MetroMap() {
-    const { sessions, activeSessionId } = useStore()
+    const { sessions, activeSessionId, currentTaskIds, setCurrentTask } = useStore()
     const activeSession = sessions[activeSessionId]
     const roadmap = activeSession?.roadmap
 
@@ -222,7 +222,7 @@ export function MetroMap() {
                                                     <motion.g key={`node-lines-${node.id}`} style={{ transform: `translate(${node.x}px, ${node.y}px)` }}>
                                                         {node.subNodes?.map((sub, index) => {
                                                             const total = node.subNodes.length
-                                                            const angleDeg = (360 / total) * index
+                                                            const angleDeg = (360 / total) * index + 90
                                                             const angleRad = (angleDeg * Math.PI) / 180
                                                             const radius = 200 // Orbit radius
                                                             const subX = Math.cos(angleRad) * radius
@@ -299,7 +299,7 @@ export function MetroMap() {
 
                                                             {node.subNodes?.map((sub, index) => {
                                                                 const total = node.subNodes.length
-                                                                const angleDeg = (360 / total) * index
+                                                                const angleDeg = (360 / total) * index + 90
                                                                 const angleRad = (angleDeg * Math.PI) / 180
                                                                 const radius = 200 // Orbit radius
                                                                 const subX = Math.cos(angleRad) * radius
