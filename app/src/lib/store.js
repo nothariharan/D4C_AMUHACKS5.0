@@ -6,7 +6,7 @@ import { create } from 'zustand';
 
 // Import Firebase Firestore functions and `db` instance
 import { db } from './firebase'; // Ensure db is correctly imported from your firebase.js
-import { doc, writeBatch, Timestamp } from 'firebase/firestore'; // Import necessary Firestore functions
+import { doc, writeBatch, Timestamp, collection, query, orderBy, limit, onSnapshot, getDoc, setDoc, runTransaction, increment, deleteDoc } from 'firebase/firestore'; // Import necessary Firestore functions
 
 import { generateRoadmap, parseCareerGoal, generateQuestions } from './gemini';
 // Assuming uuidv4 is still used for session IDs; if not, use generateId for consistency.
@@ -491,7 +491,18 @@ export const useStore = create((set, get) => ({
         get().syncToFirestore(); // Sync after logging time
     },
 
-    deleteSession: (id) => {
+    deleteSession: async (id) => {
+        const state = get();
+        if (state.user?.uid) {
+            try {
+                const roadmapRef = doc(db, "users", state.user.uid, "goals", id);
+                await deleteDoc(roadmapRef);
+                console.log("Goal removed from cloud storage.");
+            } catch (err) {
+                console.error("Cloud deletion failed:", err);
+            }
+        }
+
         set(state => {
             const newSessions = { ...state.sessions };
             delete newSessions[id];
@@ -506,7 +517,7 @@ export const useStore = create((set, get) => ({
                 }
             };
         });
-        get().syncToFirestore(); // Sync after deleting session
+        get().syncToFirestore(); // Sync remaining state (engagement metrics)
     },
 
     reset: () => set({
@@ -524,7 +535,6 @@ export const useStore = create((set, get) => ({
         const session = state.sessions[sessionId];
         if (!session || !state.user) return;
 
-        const { getDoc, setDoc } = await import('firebase/firestore');
         const blueprintRef = doc(db, "public_blueprints", sessionId);
 
         try {
@@ -558,7 +568,6 @@ export const useStore = create((set, get) => ({
     },
 
     subscribeToExchange: (callback) => {
-        const { onSnapshot, collection, query, orderBy, limit } = import('firebase/firestore');
         const q = query(
             collection(db, "public_blueprints"),
             orderBy("publishedAt", "desc"),
@@ -636,7 +645,6 @@ export const useStore = create((set, get) => ({
 
             // Increment counter in Firestore via Transaction
             const blueprintRef = doc(db, "public_blueprints", blueprint.id);
-            const { runTransaction, increment } = await import('firebase/firestore');
 
             await runTransaction(db, async (transaction) => {
                 const bDoc = await transaction.get(blueprintRef);
@@ -666,7 +674,6 @@ export const useStore = create((set, get) => ({
         if (!state.user) return;
         const userId = state.user.uid;
 
-        const { runTransaction } = await import('firebase/firestore');
         const blueprintRef = doc(db, "public_blueprints", blueprintId);
 
         try {

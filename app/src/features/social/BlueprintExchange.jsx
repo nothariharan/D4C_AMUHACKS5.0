@@ -67,13 +67,6 @@ export function BlueprintExchange() {
                 <div className="flex flex-col items-end gap-3">
                     <div className="flex items-center gap-3">
                         <button
-                            onClick={fetchBlueprints}
-                            disabled={loading}
-                            className={`p-3 bg-white border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all ${loading ? 'opacity-50' : ''}`}
-                        >
-                            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
-                        </button>
-                        <button
                             onClick={() => setShowAddModal(true)}
                             className="bg-white border-4 border-black px-6 py-3 font-black uppercase text-sm shadow-[4px_4px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center gap-2 group"
                         >
@@ -152,7 +145,6 @@ export function BlueprintExchange() {
                         onClose={() => setShowAddModal(false)}
                         onSubmit={async (sessionId) => {
                             await publishBlueprint(sessionId)
-                            await fetchBlueprints() // Re-fetch to show the new blueprint
                             alert("Roadmap Broadcasted Successfully! 🚀")
                         }}
                     />
