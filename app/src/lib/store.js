@@ -739,40 +739,52 @@ export const useStore = create((set, get) => ({
             roadmap: personalize ? blueprint.roadmap : { ...blueprint.roadmap, nodes }
         };
 
-        // UI Feedback: Switch to the new session
-        set({ showExchange: false, activeSessionId: newId });
+        // --- OPTIMISTIC UPDATE ---
+        // Add to local state FIRST so App.jsx doesn't default to 'landing' phase
+        set(s => ({
+            sessions: { ...s.sessions, [newId]: stolenSession },
+            showExchange: false,
+            activeSessionId: newId
+        }));
 
         try {
             if (personalize) {
                 // Generate tailoring questions immediately
                 const { generateTailoringQuestions } = await import('./gemini');
                 const tailoringQuestions = await generateTailoringQuestions(blueprint.role || blueprint.goal, blueprint.roadmap?.nodes || []);
-                stolenSession.questions = tailoringQuestions;
+
+                // Update local state with questions once ready
+                set(s => ({
+                    sessions: {
+                        ...s.sessions,
+                        [newId]: { ...s.sessions[newId], questions: tailoringQuestions }
+                    }
+                }));
             }
 
-            // Increment counter in Firestore via Transaction
-            const blueprintRef = doc(db, "public_blueprints", blueprint.id);
-
-            await runTransaction(db, async (transaction) => {
-                const bDoc = await transaction.get(blueprintRef);
-                if (!bDoc.exists()) throw "Blueprint deleted";
-                transaction.update(blueprintRef, {
-                    stealCount: increment(1)
-                });
-            });
-
-            set(s => ({
-                sessions: { ...s.sessions, [newId]: stolenSession },
-            }));
+            // Sync the new session to users/{uid}/goals immediately
             get().syncToFirestore();
+
+            // Increment counter in Firestore (Public record)
+            const blueprintRef = doc(db, "public_blueprints", blueprint.id);
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const bDoc = await transaction.get(blueprintRef);
+                    if (bDoc.exists()) {
+                        transaction.update(blueprintRef, {
+                            stealCount: increment(1)
+                        });
+                    }
+                });
+            } catch (permError) {
+                console.warn("Could not increment public steal count (Permissions):", permError);
+                // We ignore this as the personal steal was successful
+            }
+
             return newId;
         } catch (error) {
             console.error("Steal Error:", error);
-            // Fallback: Still allow the steal
-            set(s => ({
-                sessions: { ...s.sessions, [newId]: stolenSession },
-            }));
-            return newId;
+            return newId; // Fallback: User still has the optimistic version
         }
     },
 

@@ -45,7 +45,7 @@ export function GoalInput({ onSubmit, disabled }) {
     }, [])
 
     return (
-        <div className="w-full max-w-2xl relative">
+        <div className="w-full max-w-4xl relative">
             <AnimatePresence mode="wait">
                 {step === 1 ? (
                     <motion.div

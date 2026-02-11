@@ -385,7 +385,7 @@ function App() {
 
             {/* User Greeting if logged in - now uses isLoggedIn */}
             {isLoggedIn && user && (
-              <div className="mt-4 font-mono text-lg font-bold">
+              <div className="mt-4 font-mono text-lg font-bold text-center">
                 Welcome back, <span className="text-brutal-blue">{user.displayName}</span>!
               </div>
             )}
@@ -405,7 +405,28 @@ function App() {
                 className="w-full flex justify-center"
               >
                 {phase === 'landing' && (
-                  <GoalInput onSubmit={handleGoalSubmit} disabled={!isInitialLoadComplete} />
+                  <div className="flex flex-col items-center gap-16">
+                    <GoalInput onSubmit={handleGoalSubmit} disabled={!isInitialLoadComplete} />
+
+                    {isLoggedIn && (
+                      <motion.button
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={compileManifest}
+                        className="group relative px-10 py-5 bg-brutal-green border-4 border-black font-black text-2xl uppercase shadow-[8px_8px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+                      >
+                        <div className="flex items-center gap-4">
+                          <Terminal size={28} strokeWidth={3} />
+                          Compile Manifest
+                        </div>
+                        <div className="absolute -top-4 -right-4 bg-black text-white text-[12px] px-3 py-1.5 rotate-12 group-hover:rotate-0 transition-transform border-2 border-white">
+                          VERIFIED ASSET
+                        </div>
+                      </motion.button>
+                    )}
+                  </div>
                 )}
 
                 {(phase === 'assessment' || phase === 'blueprint-assessment') && (
