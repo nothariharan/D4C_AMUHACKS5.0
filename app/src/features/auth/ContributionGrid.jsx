@@ -37,10 +37,10 @@ export function ContributionGrid() {
     const getColor = (intensity) => {
         switch (intensity) {
             case 0: return 'bg-gray-100'
-            case 1: return 'bg-yellow-100' // Consumption
-            case 2: return 'bg-brutal-yellow' // Moderate
-            case 3: return 'bg-orange-400' // High
-            case 4: return 'bg-brutal-red' // Intense (Fire)
+            case 1: return 'bg-yellow-50' // Lightest
+            case 2: return 'bg-yellow-200' // Light
+            case 3: return 'bg-brutal-yellow' // Strong
+            case 4: return 'bg-black' // Max Intensity (Black for contrast in Yellow theme)
             default: return 'bg-gray-100'
         }
     }
