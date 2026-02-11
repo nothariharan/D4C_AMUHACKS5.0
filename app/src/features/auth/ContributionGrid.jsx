@@ -16,7 +16,8 @@ export function ContributionGrid() {
         // For simplicity, just use active session logs
         const logs = activeSession?.dailyLog || {}
 
-        for (let d = new Date(oneYearAgo); d <= today; d.setDate(d.getDate() + 1)) {
+        // Loop backwards from today to 365 days ago
+        for (let d = new Date(today); d >= oneYearAgo; d.setDate(d.getDate() - 1)) {
             const dateStr = d.toISOString().split('T')[0]
             const log = logs[dateStr]
 
@@ -52,14 +53,9 @@ export function ContributionGrid() {
                 <span className="text-xs text-gray-500 font-normal normal-case">(Last 365 Days)</span>
             </h3>
 
-            <div className="flex gap-1 min-w-max">
-                {/* Simplified rendering: Just columns of weeks would be complex to robustly implement in one go without a library
-                    So we'll do a simple row of blocks for the last 30-60 days to keep it clean and performant for now,
-                    or a grid of 7 rows x 52 columns if we want full GitHub style.
-                */}
-
-                {/* Let's do a 7-row grid (weeks) */}
-                <div className="grid grid-rows-7 grid-flow-col gap-1">
+            <div className="flex justify-end gap-1 min-w-max">
+                {/* Reversed Time Flow: Recent data starts on the RIGHT and flows LEFT */}
+                <div className="grid grid-rows-7 grid-flow-col gap-1" style={{ direction: 'rtl' }}>
                     {heatmapData.map((day, i) => (
                         <div
                             key={day.date}
