@@ -35,7 +35,7 @@ export function ProfilePage({ onClose }) {
     }
 
     return (
-        <div className="fixed inset-0 z-[100] bg-white/90 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[500] bg-white/90 backdrop-blur-sm flex items-center justify-center p-4">
 
             {/* Trading Card Container */}
             <div className="w-full max-w-2xl bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] relative flex flex-col">

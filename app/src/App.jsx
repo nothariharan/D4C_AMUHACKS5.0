@@ -263,7 +263,7 @@ function App() {
       {/* Profile Icon - Top Right Absolute */}
       <button
         onClick={() => setShowProfile(true)}
-        className="fixed top-4 right-4 z-[90] bg-white border-2 border-black p-2 shadow-brutal hover:translate-y-0.5 hover:shadow-none transition-all"
+        className="fixed top-4 right-4 z-[100] bg-white border-2 border-black p-2 shadow-brutal hover:translate-y-0.5 hover:shadow-none transition-all"
         title="View Profile"
       >
         <User size={24} strokeWidth={2.5} />
@@ -277,7 +277,7 @@ function App() {
       <div className="z-10 w-full max-w-7xl flex flex-col items-center gap-6">
 
         {/* Dynamic Header */}
-        {phase === 'roadmap' ? (
+        {showExchange ? null : phase === 'roadmap' ? (
           <div className="w-full flex flex-col bg-white border-3 border-black shadow-brutal mb-4">
             {/* Top Row: Goal + Metrics */}
             <div className="flex flex-col md:flex-row justify-between items-center px-6 py-5 gap-4">
@@ -401,7 +401,7 @@ function App() {
         </div>
 
         {/* Feature Grid (Only on Landing) */}
-        {phase === 'landing' && (
+        {!showExchange && phase === 'landing' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mt-12 mb-12">
             <div className="brutal-border p-6 bg-white shadow-brutal hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all cursor-crosshair">
               <h3 className="font-bold text-xl mb-2 flex items-center gap-2">
@@ -430,7 +430,6 @@ function App() {
                 Track progress, not just tutorials watched.
               </p>
             </div>
-
             {/* Heatmap on landing too if authed - now uses isLoggedIn and passes heatmapData */}
             {isLoggedIn && (
               <div className="col-span-3">

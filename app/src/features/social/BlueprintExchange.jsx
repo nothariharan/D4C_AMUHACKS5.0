@@ -45,7 +45,7 @@ export function BlueprintExchange() {
             <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-4">
                 <div>
                     <h2 className="text-6xl font-black uppercase italic tracking-tighter leading-none">
-                        Blueprint <span className="bg-brutal-yellow text-black px-2">Exchange</span>
+                        Roadmap <span className="bg-brutal-yellow text-black px-2">Exchange</span>
                     </h2>
                     <p className="font-mono text-sm mt-4 opacity-70">
                         [ AUTH_MODE: SOCIAL_FORKING ] <br />
@@ -53,8 +53,8 @@ export function BlueprintExchange() {
                     </p>
                 </div>
                 <div className="bg-black text-[#0f0] p-4 font-mono text-xs border-2 border-[#0f0]/30">
-                    STATUS: UPLINK_ACTIVE <br />
-                    BLUEPRINTS_FOUND: {blueprints.length}
+                    NET_CONNECT: ESTABLISHED <br />
+                    DRIVES_READY: {blueprints.length}
                 </div>
             </div>
 

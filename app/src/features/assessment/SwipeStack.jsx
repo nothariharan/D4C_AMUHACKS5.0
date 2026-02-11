@@ -60,7 +60,7 @@ export function SwipeStack({ isTailoring }) {
                 {/* Question Counter - Moved inside the flow or kept absolute with padding */}
                 <div className="absolute top-2 w-full text-center">
                     <span className="bg-black text-[#0f0] px-4 py-1.5 border-2 border-white font-black font-mono text-sm shadow-brutal uppercase tracking-widest">
-                        [ SYSTEM_PROBE: {currentQuestionIndex + 1} / {questions.length} ]
+                        [ CORE_SCAN: {currentQuestionIndex + 1} / {questions.length} ]
                     </span>
                 </div>
 

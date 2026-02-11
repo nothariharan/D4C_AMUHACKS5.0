@@ -52,9 +52,20 @@ export function Sidebar() {
             {/* Toggle Button */}
             <button
                 onClick={() => setIsOpen(true)}
-                className="fixed top-4 left-4 z-50 p-2 bg-white border-3 border-black shadow-brutal hover:translate-y-1 hover:shadow-none transition-all"
+                className="fixed top-4 left-4 z-[100] p-2 bg-white border-3 border-black shadow-brutal hover:translate-y-1 hover:shadow-none transition-all"
+                title="Goal Drive"
             >
                 <Menu size={24} />
+            </button>
+
+            {/* Roadmap Exchange Button - Right of Sidebar Button */}
+            <button
+                onClick={handleOpenExchange}
+                className={`fixed top-4 left-24 z-[100] px-6 py-3 border-4 border-black shadow-brutal hover:translate-y-1 hover:shadow-none transition-all flex items-center gap-3 font-black uppercase text-base tracking-tighter ${showExchange ? 'bg-brutal-yellow' : 'bg-white'}`}
+                title="Roadmap Exchange"
+            >
+                <Globe size={28} strokeWidth={3} />
+                <span className="hidden md:block">Roadmap Exchange</span>
             </button>
 
             {/* Backdrop */}
@@ -65,7 +76,7 @@ export function Sidebar() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={() => setIsOpen(false)}
-                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[110]"
                     />
                 )}
             </AnimatePresence>
@@ -78,7 +89,7 @@ export function Sidebar() {
                         animate={{ x: 0 }}
                         exit={{ x: '-100%' }}
                         transition={{ type: 'spring', damping: 20 }}
-                        className="fixed top-0 left-0 h-full w-80 bg-[#222] border-r-4 border-black z-50 flex flex-col shadow-[8px_0px_0px_0px_#000]"
+                        className="fixed top-0 left-0 h-full w-80 bg-[#222] border-r-4 border-black z-[120] flex flex-col shadow-[8px_0px_0px_0px_#000]"
                     >
                         {/* Header: Industrial/Hardware feel */}
                         <div className="p-4 border-b-4 border-black flex justify-between items-center bg-brutal-yellow">
@@ -97,16 +108,6 @@ export function Sidebar() {
                             >
                                 <Plus size={20} strokeWidth={3} />
                                 LOAD NEW DISK
-                            </motion.button>
-
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={handleOpenExchange}
-                                className={`w-full flex items-center justify-center gap-2 p-4 border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all font-black uppercase text-sm italic ${showExchange ? 'bg-brutal-yellow' : 'bg-white'}`}
-                            >
-                                <Globe size={20} strokeWidth={3} />
-                                BLUEPRINT_EXCHANGE
                             </motion.button>
 
                             <div className="space-y-4">
