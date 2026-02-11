@@ -1,0 +1,517 @@
+# Product Requirements Document: Just Ask
+
+## Project Overview
+
+**Project Name:** Just Ask  
+**Type:** Hackathon Build (30-Hour Sprint)  
+**Design Theme:** Neo-Brutalist / Pop-Art Academic  
+**Problem Statement:** PS-05: Personalized Skill Gap Self-Diagnosis Tool  
+**Core Stack:** React, Tailwind CSS, Firebase, Gemini API
+
+---
+
+## 1. Executive Summary
+
+**Just Ask** is a goal-first career engine that reverses the traditional learning paradigm. Instead of navigating through endless course catalogs, students define a single career objective (e.g., "Full Stack Developer"). The platform conducts a rapid Binary Gap Analysis through an intuitive skill-sorting interface and generates a non-linear Metro Map roadmap. 
+
+The system emphasizes action over passive consumption, tracking incremental progress through Micro-Wins displayed on a consistency heatmap. This approach helps users escape tutorial paralysis and focus on building practical skills.
+
+---
+
+## 2. Design System: Neo-Brutalist Architecture
+
+The visual language prioritizes clarity, immediacy, and tactile interaction. The interface should feel like precision engineering—bold, intentional, and unmistakably functional.
+
+### 2.1 Color Palette
+
+| Color Name | Hex Code | Usage |
+|------------|----------|-------|
+| Canvas White | `#FFFFFF` | Backgrounds, empty states |
+| Ink Black | `#000000` | Borders, typography, shadows |
+| Action Red | `#FF4D4D` | Negative actions, blocked nodes, rejection states |
+| Logic Blue | `#3B82F6` | Information states, hover effects, navigation |
+| Highlighter Yellow | `#FFDE00` | Primary CTAs, affirmative actions, completed states |
+
+### 2.2 Visual Design Rules
+
+**Borders**
+- All interactive elements require `border: 3px solid black`
+- No rounded corners unless specifically noted
+
+**Shadows**
+- Hard shadows only: `box-shadow: 4px 4px 0px 0px #000`
+- No blur or gradient effects
+
+**Typography**
+- **Headers:** Space Grotesk or Chivo (700-900 weight, -0.02em tracking)
+- **Body:** JetBrains Mono (400-500 weight for code-like readability)
+- **Scale:** Strict modular scale (16px base, 1.25 ratio)
+
+**Micro-Interactions**
+- Buttons depress on click via `transform: translateY(2px)` with shadow reduction
+- Transitions use spring physics (via Framer Motion)
+- Hover states shift from white to yellow backgrounds with maintained black borders
+
+---
+
+## 3. User Flow & Features
+
+### Phase 1: Goal Input (Landing Page)
+
+**Interface Design**
+- Single large input field centered on viewport
+- Minimal chrome, maximum focus
+- Typewriter-style text rendering
+
+**User Interaction**
+1. User enters career goal: "I want to be a [Target Role]"
+2. System parses input as user types
+3. Visual feedback through subtle background pattern shift
+4. Enter key triggers diagnosis engine initialization
+
+**Technical Notes**
+- Implement debounced parsing (300ms delay)
+- Client-side validation for minimum input length
+- Error state for unsupported career paths
+
+---
+
+### Phase 2: Skill Gap Analysis (Binary Sorting Interface)
+
+**Objective:** Map user's existing knowledge in under 30 seconds
+
+**UI Components**
+- Centered card stack showing one skill at a time
+- Clear left/right interaction zones
+- Progress indicator showing X of 10 completed
+
+**Interaction Mechanic**
+- **Left Swipe (Red Zone):** "Learning Needed" → Added to roadmap as gap
+- **Right Swipe (Yellow Zone):** "Already Know" → Excluded from roadmap
+- Keyboard support: Arrow keys or A/D for accessibility
+
+**Logic Flow**
+1. Gemini API generates 10 foundational questions based on career goal
+2. Questions ordered from fundamental to advanced
+3. User responses stored as boolean array
+4. Results feed into roadmap generation algorithm
+
+**Card Design**
+```
+┌─────────────────────────┐
+│  Skill: Python Loops    │
+│                         │
+│  Used to iterate over   │
+│  collections and repeat │
+│  code blocks            │
+│                         │
+│  [←] Don't Know  Know [→]│
+└─────────────────────────┘
+```
+
+---
+
+### Phase 3: Learning Roadmap (Metro Map Visualization)
+
+**UI Pattern:** Horizontal scrollable subway/metro map metaphor
+
+**Node States**
+- **White Node:** Locked (dependencies incomplete)
+- **Yellow Node:** Active/In Progress
+- **Blue Node:** Completed
+
+**Edge System**
+- Thick black connector lines between nodes
+- Branching supported for parallel learning paths
+- Example: "Learn CSS" branches to "Flexbox" and "Grid"
+
+**Node Interaction (Modal)**
+When clicking a node, display ticket-style modal containing:
+
+1. **Context (The "Why"):** Single sentence explaining skill relevance
+2. **Action Item:** Project-based task (Build X, not Watch Y)
+3. **Submission Zone:** Drag-and-drop area for proof of completion
+4. **Estimated Time:** Realistic completion timeframe
+
+**Example Node Structure**
+```javascript
+{
+  "id": "node_js_async",
+  "title": "Asynchronous JavaScript",
+  "why": "APIs don't wait around—neither should your code.",
+  "task": "Build a weather app that fetches data from OpenWeatherMap API",
+  "estimated_hours": 4,
+  "dependencies": ["node_js_fetch", "node_js_promises"],
+  "status": "locked"
+}
+```
+
+---
+
+### Phase 4: Progress Tracking (Heatmap Dashboard)
+
+**Profile Card Design**
+- Trading card aesthetic with user stats
+- Compact, scannable layout
+- Achievement-oriented copy
+
+**Consistency Heatmap**
+- GitHub contribution graph pattern
+- Tracks intensity of engagement, not just login frequency
+- Color progression:
+  - White: No activity
+  - Light Yellow: Consumption (reading/watching)
+  - Yellow: Moderate engagement (building, submitting)
+  - Blue: High engagement (multiple completions)
+
+**Key Metrics**
+- **Current Streak:** Consecutive active days
+- **Primary Skill:** Most completed nodes in category
+- **Total Projects:** Completed task count
+- **Velocity:** Average completion rate (nodes/week)
+
+---
+
+## 4. Technical Implementation
+
+### 4.1 Frontend Architecture
+
+**Framework:** React 18+ with Vite
+
+**State Management**
+- Zustand for global state (user progress, swipe history)
+- React Query for server state synchronization
+- Local storage for session persistence
+
+**Styling System**
+- Tailwind CSS with custom configuration
+- Extended theme configuration:
+```javascript
+// tailwind.config.js
+module.exports = {
+  theme: {
+    extend: {
+      colors: {
+        'brutal-yellow': '#FFDE00',
+        'brutal-blue': '#3B82F6',
+        'brutal-red': '#FF4D4D',
+      },
+      borderWidth: {
+        '3': '3px',
+      },
+      boxShadow: {
+        'brutal': '4px 4px 0px 0px rgba(0,0,0,1)',
+      },
+    },
+  },
+}
+```
+
+**Animation Library**
+- Framer Motion for card stack transitions
+- `<AnimatePresence>` for enter/exit animations
+- Custom spring configurations for button depression
+
+**Accessibility**
+- Keyboard navigation for all interactive elements
+- ARIA labels for swipe interactions
+- Focus management for modal interactions
+
+---
+
+### 4.2 Backend Infrastructure (Firebase)
+
+**Authentication Strategy**
+- Google Sign-In (OAuth 2.0 popup flow)
+- Anonymous authentication for demo mode
+- Account linking for anonymous-to-permanent conversion
+
+**Firestore Database Schema**
+
+**Collection: `users`**
+```javascript
+{
+  "uid": "user_abc123",
+  "displayName": "Jane Doe",
+  "email": "jane@example.com",
+  "createdAt": "timestamp",
+  "currentStreak": 4,
+  "longestStreak": 12,
+  "totalProjects": 7,
+  "heatmapData": {
+    "2024-01-15": 3,  // Intensity level 0-4
+    "2024-01-16": 1,
+    "2024-01-17": 4
+  }
+}
+```
+
+**Collection: `roadmaps` (subcollection under users)**
+```javascript
+{
+  "roadmapId": "rm_fullstack_2024",
+  "userId": "user_abc123",
+  "careerGoal": "Full Stack Developer",
+  "status": "active",  // active, completed, archived
+  "createdAt": "timestamp",
+  "lastUpdated": "timestamp",
+  "knownSkills": ["html", "css", "javascript-basics"],
+  "gapSkills": ["react", "nodejs", "sql"],
+  "nodes": [
+    {
+      "nodeId": "node_001",
+      "title": "JavaScript Variables & Data Types",
+      "status": "completed",
+      "type": "project",
+      "completedAt": "timestamp"
+    },
+    {
+      "nodeId": "node_002",
+      "title": "Build a Calculator",
+      "status": "in_progress",
+      "type": "project",
+      "startedAt": "timestamp"
+    },
+    {
+      "nodeId": "node_003",
+      "title": "React State Management",
+      "status": "locked",
+      "type": "project",
+      "dependencies": ["node_001", "node_002"]
+    }
+  ]
+}
+```
+
+**Security Rules**
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      match /roadmaps/{roadmapId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+  }
+}
+```
+
+---
+
+### 4.3 AI Integration Layer (Gemini API)
+
+**Roadmap Generation Strategy**
+
+**Prompt Engineering Pattern: One-Shot JSON Generation**
+
+```
+System Prompt:
+You are a career architect specializing in technical skill development. 
+Create a structured learning roadmap for a {CAREER_GOAL}. 
+
+User Knowledge Base:
+- Already knows: {KNOWN_SKILLS}
+- Learning gaps: {GAP_SKILLS}
+
+Requirements:
+1. Generate exactly 8-12 nodes focusing ONLY on gap skills
+2. Each node must include:
+   - title: Clear, specific skill name
+   - microTask: Concrete project to build (no tutorials)
+   - whyText: One sentence explaining practical relevance
+   - estimatedHours: Realistic completion time
+   - dependencies: Array of prerequisite node IDs
+3. Output valid JSON only, no markdown formatting
+4. Ensure logical progression from foundational to advanced
+5. Include at least one capstone project combining multiple skills
+
+Output Format:
+{
+  "nodes": [
+    {
+      "nodeId": "string",
+      "title": "string",
+      "microTask": "string",
+      "whyText": "string",
+      "estimatedHours": number,
+      "dependencies": ["string"]
+    }
+  ]
+}
+```
+
+**API Implementation**
+```javascript
+async function generateRoadmap(careerGoal, knownSkills, gapSkills) {
+  const prompt = buildPrompt(careerGoal, knownSkills, gapSkills);
+  
+  const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${GEMINI_API_KEY}`
+    },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+      }
+    })
+  });
+  
+  const data = await response.json();
+  return JSON.parse(data.candidates[0].content.parts[0].text);
+}
+```
+
+---
+
+## 5. Hackathon MVP Scope (30-Hour Constraints)
+
+### Feature Prioritization
+
+**In Scope (Must Have)**
+- Single goal input and parsing
+- 10-question skill gap analysis
+- Metro map visualization with fixed layout
+- Basic node interaction and status updates
+- Heatmap progress tracking
+- Google authentication
+
+**Out of Scope (Future Iterations)**
+- Dynamic graph layout algorithm (use fixed snake pattern)
+- AI-powered proof verification (accept any upload, auto-approve after 2s delay)
+- Multiple concurrent roadmaps (limit to one active goal)
+- Social features and leaderboards
+- Mobile-responsive optimization beyond basic breakpoints
+- Internationalization
+
+### Implementation Shortcuts
+
+**1. Fixed Layout System**
+```javascript
+// Hardcoded node positions for 12-node roadmap
+const METRO_LAYOUT = [
+  { x: 100, y: 200, id: 'node_001' },
+  { x: 250, y: 200, id: 'node_002' },
+  { x: 400, y: 200, id: 'node_003' },
+  // ... continue snake pattern
+];
+```
+
+**2. Mock Verification Flow**
+```javascript
+async function submitProof(file) {
+  // Simulate upload
+  await delay(2000);
+  
+  // Auto-approve without actual AI check
+  return { verified: true, message: "Proof accepted!" };
+}
+```
+
+**3. Simplified State Machine**
+- Nodes can only be: locked → in_progress → completed
+- No partial completion or revision states
+- Linear dependency chains only (no complex DAGs)
+
+---
+
+## 6. Success Metrics
+
+### Quantitative Metrics
+
+**Speed Metrics**
+- Time to roadmap generation: Target < 60 seconds from landing
+- Skill assessment completion rate: Target 100% (all 10 questions answered)
+- Average session duration: Target > 5 minutes
+
+**Engagement Metrics**
+- Node completion rate: % of unlocked nodes completed within 7 days
+- Return user rate: % of users who log in 2+ times
+- Streak establishment: % of users who achieve 3+ day streak
+
+### Qualitative Metrics (Judging Criteria)
+
+**Visual Impact**
+- Does the neo-brutalist design create immediate recognition?
+- Is the interface intuitive without onboarding?
+
+**Value Proposition Clarity**
+- Do judges understand the "reverse learning" concept within 30 seconds?
+- Is the Metro Map metaphor immediately clear?
+
+**Technical Execution**
+- Smooth interactions with no lag on card swipes
+- Proper state management (no data loss on refresh)
+- Clean, production-ready code structure
+
+---
+
+## 7. Development Timeline (30 Hours)
+
+### Hour 0-6: Foundation
+- Project setup (Vite, Tailwind, Firebase config)
+- Design system implementation (colors, shadows, typography)
+- Authentication flow
+- Basic routing structure
+
+### Hour 7-15: Core Features
+- Landing page with goal input
+- Skill gap analysis card interface
+- Gemini API integration for roadmap generation
+- Firestore CRUD operations
+
+### Hour 16-24: Visualization
+- Metro map layout rendering
+- Node state management
+- Modal interactions
+- File upload simulation
+
+### Hour 25-28: Polish
+- Heatmap implementation
+- Micro-interactions and animations
+- Error states and loading indicators
+- Responsive adjustments
+
+### Hour 29-30: Deployment & Demo Prep
+- Firebase hosting deployment
+- Demo script preparation
+- Bug fixes and stability testing
+
+---
+
+## 8. Risk Assessment
+
+**High Risk**
+- Gemini API rate limits during demo (Mitigation: Cache sample responses)
+- Complex state synchronization between Firestore and local state (Mitigation: Use React Query)
+
+**Medium Risk**
+- Metro map layout complexity (Mitigation: Use fixed positions)
+- Time overrun on animations (Mitigation: Simplify to CSS-only transforms)
+
+**Low Risk**
+- Authentication issues (Mitigation: Well-documented Firebase SDK)
+- Responsive design (Mitigation: Desktop-first, mobile as stretch goal)
+
+---
+
+## Appendix A: Terminology
+
+- **Binary Gap Analysis:** Quick skill assessment through yes/no questions
+- **Metro Map:** Visual roadmap metaphor using subway/transit system design pattern
+- **Micro-Win:** Single completable task designed for immediate satisfaction
+- **Tutorial Hell:** State of passive content consumption without practical application
+
+---
+
+## Appendix B: References
+
+- Design Inspiration: Brutalist Web Design, Bauhaus movement
+- Technical References: React documentation, Firebase guides, Gemini API docs
+- UX Patterns: Tinder swipe mechanics, GitHub contribution graph
