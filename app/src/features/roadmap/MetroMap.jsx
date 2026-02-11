@@ -8,7 +8,7 @@ import { NextUpPanel } from './NextUpPanel'
 import { TodaysQuest } from './TodaysQuest'
 
 export function MetroMap() {
-    const { sessions, activeSessionId, currentTaskIds, setCurrentTask } = useStore()
+    const { sessions, activeSessionId, currentTaskIds, setCurrentTask, updateNodePosition, completeTask } = useStore()
     const activeSession = sessions[activeSessionId]
     const roadmap = activeSession?.roadmap
 
@@ -47,16 +47,18 @@ export function MetroMap() {
     // Update node position after drag
     const handleNodeDragEnd = (nodeId, info) => {
         const { offset } = info
-        setLocalNodes(prev => prev.map(node => {
-            if (node.id === nodeId) {
-                return {
-                    ...node,
-                    x: node.x + offset.x,
-                    y: node.y + offset.y
-                }
-            }
-            return node
-        }))
+        setLocalNodes(prev => {
+            const node = prev.find(n => n.id === nodeId);
+            if (!node) return prev;
+
+            const newX = node.x + offset.x;
+            const newY = node.y + offset.y;
+
+            // Persist to store/Firestore
+            updateNodePosition(nodeId, newX, newY);
+
+            return prev.map(n => n.id === nodeId ? { ...n, x: newX, y: newY } : n);
+        });
     }
 
     // Refs for Auto-Zoom
@@ -197,7 +199,7 @@ export function MetroMap() {
                                             <circle key={`aura-${node.id}`} cx={node.x} cy={node.y} r={120} fill="url(#completionAura)" />
                                         ))}
 
-                                        {/* Prerequisite Lines - different styles per status */}
+                                        {/* Prerequisite Lines between Main Nodes */}
                                         {localNodes.map((node, i) => {
                                             if (i === 0) return null;
                                             const prev = localNodes[i - 1];
@@ -215,54 +217,46 @@ export function MetroMap() {
                                             );
                                         })}
 
-                                        {/* SVG Lines for SubNodes and TaskNodes (Orbital Layout) */}
-                                        <AnimatePresence>
-                                            {localNodes.map(node => (
-                                                expandedNodes[node.id] && (
-                                                    <motion.g key={`node-lines-${node.id}`} style={{ transform: `translate(${node.x}px, ${node.y}px)` }}>
-                                                        {node.subNodes?.map((sub, index) => {
-                                                            const total = node.subNodes.length
-                                                            const angleDeg = (360 / total) * index + 90
-                                                            const angleRad = (angleDeg * Math.PI) / 180
-                                                            const radius = 300 // Orbit radius (Increased to clear title)
-                                                            const subX = Math.cos(angleRad) * radius
-                                                            const subY = Math.sin(angleRad) * radius
+                                        {/* Lines for SubNodes and TaskNodes (Using Absolute Coordinates) */}
+                                        {localNodes.map(node => (
+                                            expandedNodes[node.id] && node.subNodes?.map((sub, index) => {
+                                                const total = node.subNodes.length;
+                                                const angleDeg = (360 / total) * index + 90;
+                                                const angleRad = (angleDeg * Math.PI) / 180;
+                                                const radius = 300;
+                                                const subX = node.x + Math.cos(angleRad) * radius;
+                                                const subY = node.y + Math.sin(angleRad) * radius;
+
+                                                return (
+                                                    <g key={`sub-task-lines-${sub.id}`}>
+                                                        {/* Main -> Sub Line */}
+                                                        <motion.line
+                                                            x1={node.x} y1={node.y} x2={subX} y2={subY}
+                                                            stroke="black" strokeWidth="4" strokeDasharray="8 4"
+                                                            initial={{ pathLength: 0, opacity: 0 }}
+                                                            animate={{ pathLength: 1, opacity: 1 }}
+                                                        />
+
+                                                        {/* Sub -> Task Lines */}
+                                                        {expandedSubNodes[sub.id] && sub.tasks?.map((task, j) => {
+                                                            const taskDistance = 150 + j * 80;
+                                                            const taskX = subX + Math.cos(angleRad) * taskDistance;
+                                                            const taskY = subY + Math.sin(angleRad) * taskDistance;
 
                                                             return (
-                                                                <motion.g key={`sub-lines-${sub.id}`}>
-                                                                    {/* Main -> Sub Line */}
-                                                                    <motion.line
-                                                                        x1={0} y1={0} x2={subX} y2={subY}
-                                                                        stroke="black" strokeWidth="4" strokeDasharray="8 4"
-                                                                        initial={{ pathLength: 0, opacity: 0 }}
-                                                                        animate={{ pathLength: 1, opacity: 1 }}
-                                                                        exit={{ pathLength: 0, opacity: 0 }}
-                                                                    />
-
-                                                                    {/* Sub -> Task Lines */}
-                                                                    {expandedSubNodes[sub.id] && sub.tasks?.map((task, j) => {
-                                                                        const taskDistance = 150 + j * 80 // Linear stack outwards
-                                                                        const taskX = subX + Math.cos(angleRad) * taskDistance;
-                                                                        const taskY = subY + Math.sin(angleRad) * taskDistance;
-
-                                                                        return (
-                                                                            <motion.line
-                                                                                key={`line-${sub.id}-${j}`}
-                                                                                x1={subX} y1={subY} x2={taskX} y2={taskY}
-                                                                                stroke="black" strokeWidth="2"
-                                                                                initial={{ pathLength: 0, opacity: 0 }}
-                                                                                animate={{ pathLength: 1, opacity: 1 }}
-                                                                                exit={{ pathLength: 0, opacity: 0 }}
-                                                                            />
-                                                                        )
-                                                                    })}
-                                                                </motion.g>
-                                                            )
+                                                                <motion.line
+                                                                    key={`line-${sub.id}-${j}`}
+                                                                    x1={subX} y1={subY} x2={taskX} y2={taskY}
+                                                                    stroke="black" strokeWidth="2"
+                                                                    initial={{ pathLength: 0, opacity: 0 }}
+                                                                    animate={{ pathLength: 1, opacity: 1 }}
+                                                                />
+                                                            );
                                                         })}
-                                                    </motion.g>
-                                                )
-                                            ))}
-                                        </AnimatePresence>
+                                                    </g>
+                                                );
+                                            })
+                                        ))}
                                     </svg>
 
                                     {/* Nodes Layer */}
@@ -358,7 +352,10 @@ export function MetroMap() {
                     <TaskThreadView
                         task={taskToRender}
                         onClose={() => setCurrentTask(null)}
-                        onComplete={() => console.log('Task Completed')}
+                        onComplete={() => {
+                            completeTask(taskToRender.nodeId, taskToRender.subNodeId, taskToRender.taskIndex);
+                            setCurrentTask(null);
+                        }}
                     />
                 )}
             </AnimatePresence>
@@ -415,15 +412,15 @@ const MainNode = ({ node, isExpanded, onClick, onDragEnd }) => {
         >
             {icons[node.status]}
             <span className="font-mono text-lg font-black opacity-90 tracking-widest uppercase">{taskCount} TASKS</span>
-            <span className="absolute -bottom-24 w-64 text-center bg-white border-2 border-black p-2 font-bold font-mono text-base shadow-[4px_4px_0px_0px_#000] z-30">
+            <div className="absolute -bottom-28 w-64 text-center bg-white border-4 border-black p-3 font-black font-mono text-lg text-black shadow-[8px_8px_0px_0px_#000] z-30 transform hover:-translate-y-1 transition-transform">
                 {node.title || "Unknown Concept"}
-            </span>
+            </div>
             {/* You Are Here Pulse - only on active node */}
             {node.status === 'active' && (
                 <>
                     <div className="absolute inset-0 rounded-full border-4 border-brutal-yellow animate-ping opacity-30" />
-                    <span className="absolute -top-10 bg-black text-white px-3 py-1 font-mono text-xs font-bold uppercase tracking-wider whitespace-nowrap shadow-brutal">
-                        📍 You Are Here
+                    <span className="absolute -top-12 bg-black text-[#0f0] px-4 py-1.5 border-2 border-white font-mono text-sm font-black uppercase tracking-widest whitespace-nowrap shadow-brutal">
+                        [ CURRENT_MISSION ]
                     </span>
                 </>
             )}

@@ -171,10 +171,32 @@ export const useStore = create((set, get) => ({
     },
 
     switchSession: (id) => {
-        set({ activeSessionId: id });
+        set({ activeSessionId: id, currentTaskIds: null });
         get().setLastActive();
     },
     setCurrentTask: (ids) => set({ currentTaskIds: ids }),
+
+    updateNodePosition: (nodeId, x, y) => {
+        set(state => {
+            const session = state.sessions[state.activeSessionId];
+            if (!session || !session.roadmap) return {};
+
+            const newNodes = session.roadmap.nodes.map(node =>
+                node.id === nodeId ? { ...node, x, y } : node
+            );
+
+            return {
+                sessions: {
+                    ...state.sessions,
+                    [state.activeSessionId]: {
+                        ...session,
+                        roadmap: { ...session.roadmap, nodes: newNodes }
+                    }
+                }
+            };
+        });
+        get().syncToFirestore();
+    },
 
     setLastActive: () => {
         set((state) => {
@@ -348,22 +370,32 @@ export const useStore = create((set, get) => ({
                         taskObj.completedAt = new Date().toISOString();
                         newTasks[taskIndex] = taskObj;
 
-                        // Reality Check Logic: First Node, First SubNode, First Task
-                        if (nIdx === 0 && sIdx === 0 && taskIndex === 0) {
-                            unlockNext = true;
-                        }
-
                         return { ...sub, tasks: newTasks };
                     });
+
+                    // Check if node is fully completed (all tasks in all subnodes done)
+                    const isFullyCompleted = newSubNodes.every(sn =>
+                        sn.tasks.every(t => (typeof t === 'string' ? false : t.completed))
+                    );
+
+                    if (isFullyCompleted) {
+                        unlockNext = true;
+                        return { ...node, subNodes: newSubNodes, status: 'completed' };
+                    }
+
                     return { ...node, subNodes: newSubNodes };
                 }
                 return node;
             });
 
             if (unlockNext) {
-                // Find the second node (index 1) and unlock it if it's locked
-                if (newNodes.length > 1 && newNodes[1].status === 'locked') {
-                    newNodes[1].status = 'active';
+                // Unlock the NEXT node in the sequence
+                const activeNodeIndex = newNodes.findIndex(n => n.id === nodeId);
+                if (activeNodeIndex !== -1 && activeNodeIndex < newNodes.length - 1) {
+                    const nextNode = newNodes[activeNodeIndex + 1];
+                    if (nextNode.status === 'locked') {
+                        nextNode.status = 'active';
+                    }
                 }
             }
 
@@ -465,17 +497,7 @@ export const useStore = create((set, get) => ({
     reset: () => set({
         activeSessionId: null,
         currentTaskIds: null,
-        engagementMetrics: { // Reset metrics for consistency
-            currentStreak: 0,
-            totalProjects: 0,
-            heatmapData: {},
-            showTrap: false,
-            nodeInteractions: 0,
-            sessionStartTime: Date.now(),
-        },
-        sessions: {}, // Clear sessions as well
-        // user and isLoggedIn state should NOT be reset by a general 'reset' action
-        // as they are managed by Firebase Auth listener
+        // DO NOT reset sessions or metrics here, just clear active context
     })
 
 }));

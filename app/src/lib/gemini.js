@@ -33,142 +33,146 @@ function parseJSON(text) {
 }
 
 // MOCK DATA FOR TESTING
+// MOCK DATA FOR TESTING
 const MOCK_ROADMAP = {
     nodes: [
         {
-            id: '1', title: 'Foundations', status: 'completed', x: 100, y: 300,
+            id: '1', title: 'Phase 1: Digital Foundations', status: 'active', x: 150, y: 350,
             subNodes: [
                 {
                     id: '1-1',
-                    title: 'HTML/CSS',
+                    title: 'The Terminal & Git',
                     tasks: [
                         {
-                            title: 'Reality Check: Environment Setup',
-                            detail: 'Install VS Code and set up your workspace.',
-                            link: 'https://code.visualstudio.com/',
-                            breakdown: 'A proper development environment is the foundation of your workflow. VS Code provides essential tools like syntax highlighting, debugging, and extensions that streamline coding.',
-                            practice: { question: 'What is the purpose of the "Extensions" view in VS Code?', hint: 'Think about adding functionality like Python or Live Server.' }
+                            title: 'Mastering the Command Line',
+                            detail: 'Learn navigation (cd, ls) and file ops (mkdir, touch).',
+                            link: 'https://ubuntu.com/tutorials/command-line-for-beginners',
+                            breakdown: 'The terminal is the primary interface for professional developers. It allows for fast, scriptable control over the operating system, which is essential for server management, build tools, and version control.',
+                            practice: { question: 'What command is used to create a new directory?', hint: 'Think of "make directory".' }
                         },
                         {
-                            title: 'Grid Layouts',
-                            detail: 'Create complex 2D layouts with CSS Grid.',
-                            link: 'https://learncssgrid.com/',
-                            breakdown: 'CSS Grid Layout is a two-dimensional layout system for the web. It lets you layout items in rows and columns, offering a grid-based approach that was previously impossible without complex hacks.',
-                            practice: { question: 'How do you define a grid container in CSS?', hint: 'display property.' }
+                            title: 'Git Version Control',
+                            detail: 'Understand commits, branches, and merging.',
+                            link: 'https://git-scm.com/book/en/v2/Getting-Started-Git-Basics',
+                            breakdown: 'Git is a distributed version control system that tracks changes in any set of computer files. It is the industry standard for collaboration, allowing multiple developers to work on the same codebase simultaneously without overwriting each other.',
+                            practice: { question: 'What command stages changes for a commit?', hint: 'git [word] filename' }
                         }
                     ]
                 },
                 {
                     id: '1-2',
-                    title: 'JavaScript',
+                    title: 'HTML5 & Semantic Web',
                     tasks: [
-                        { title: 'ES6 Syntax', detail: 'Learn arrow functions, destructuring, and let/const.', link: 'https://javascript.info/es6-basics' },
-                        { title: 'DOM Manipulation', detail: 'Interact with HTML elements using JavaScript.', link: 'https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Client-side_web_APIs/Manipulating_documents' }
+                        {
+                            title: 'Semantic HTML Structure',
+                            detail: 'Use <main>, <article>, <section> correctly.',
+                            link: 'https://developer.mozilla.org/en-US/docs/Glossary/Semantics#semantics_in_html',
+                            breakdown: 'Semantic HTML uses tags that convey the meaning of the content, not just its appearance. This is crucial for SEO, accessibility, and clean code maintenance.',
+                            practice: { question: 'Should you use <div> for everything?', hint: 'Think about screen readers and search engines.' }
+                        }
                     ]
                 }
             ]
         },
         {
-            id: '2', title: 'Frontend Core', status: 'locked', x: 400, y: 150,
+            id: '2', title: 'Phase 2: Modern Styling', status: 'locked', x: 450, y: 200,
             subNodes: [
                 {
                     id: '2-1',
-                    title: 'React Basics',
+                    title: 'Flexbox & CSS Grid',
                     tasks: [
-                        { title: 'Components', detail: 'Building blocks of React applications.', link: 'https://react.dev/learn/your-first-component' },
-                        { title: 'Props & State', detail: 'Managing data flow and interactivity.', link: 'https://react.dev/learn/state-a-component-memory' }
+                        {
+                            title: 'Centering Everything with Flexbox',
+                            detail: 'Master justify-content and align-items.',
+                            link: 'https://css-tricks.com/snippets/css/a-guide-to-flexbox/',
+                            breakdown: 'Flexbox is a one-dimensional layout method for arranging items in rows or columns. It excels at distributing space and aligning content within a container, even when sizes are unknown.',
+                            practice: { question: 'How do you center an item horizontally in a flex container?', hint: 'justify-something' }
+                        }
                     ]
                 },
                 {
                     id: '2-2',
-                    title: 'Hooks',
+                    title: 'Responsive Design',
                     tasks: [
-                        { title: 'useState', detail: 'Adding state to functional components.', link: 'https://react.dev/reference/react/useState' },
-                        { title: 'useEffect', detail: 'Handling side effects like data fetching.', link: 'https://react.dev/reference/react/useEffect' }
+                        {
+                            title: 'Media Queries',
+                            detail: 'Adapt layouts for mobile, tablet, and desktop.',
+                            link: 'https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design',
+                            breakdown: 'Responsive design ensures your website looks good on all devices. Media queries allow you to apply different CSS rules based on screen size, orientation, and resolution.',
+                            practice: { question: 'What unit is preferred for fonts in responsive design: px or rem?', hint: 'One is absolute, one is relative.' }
+                        }
                     ]
                 }
             ]
         },
         {
-            id: '3', title: 'State Mgmt', status: 'locked', x: 700, y: 400,
+            id: '3', title: 'Phase 3: JavaScript Core', status: 'locked', x: 750, y: 450,
             subNodes: [
                 {
                     id: '3-1',
-                    title: 'Redux',
+                    title: 'Functions & Logic',
                     tasks: [
-                        { title: 'Store Setup', detail: 'Configuring the global state container.', link: 'https://redux.js.org/introduction/getting-started' },
-                        { title: 'Reducers', detail: 'Pure functions to handle state changes.', link: 'https://redux.js.org/tutorials/fundamentals/part-3-state-actions-reducers' }
-                    ]
-                },
-                {
-                    id: '3-2',
-                    title: 'Context API',
-                    tasks: [
-                        { title: 'Provider', detail: 'Supplying data to the component tree.', link: 'https://react.dev/reference/react/createContext' },
-                        { title: 'Consumer', detail: 'Accessing context values in child components.', link: 'https://react.dev/reference/react/useContext' }
+                        {
+                            title: 'Arrow Functions & Scope',
+                            detail: 'Learn modern syntax and "this" binding.',
+                            link: 'https://javascript.info/arrow-functions-basics',
+                            breakdown: 'Arrow functions provide a concise syntax and lexical scoping of the "this" keyword. Understanding scope is critical for avoiding bugs in asynchronous code.',
+                            practice: { question: 'Does an arrow function have its own "this"?', hint: 'No, it inherits from parent.' }
+                        }
                     ]
                 }
             ]
         },
         {
-            id: '4', title: 'Backend', status: 'locked', x: 1000, y: 200,
+            id: '4', title: 'Phase 4: Framework Master', status: 'locked', x: 1050, y: 250,
             subNodes: [
                 {
                     id: '4-1',
-                    title: 'Node.js',
+                    title: 'React Fundamentals',
                     tasks: [
-                        { title: 'Event Loop', detail: 'Understanding non-blocking I/O operations.', link: 'https://nodejs.org/en/docs/guides/event-loop-timers-and-nexttick/' },
-                        { title: 'Modules', detail: 'Organizing code with CommonJS or ES Modules.', link: 'https://nodejs.org/api/modules.html' }
-                    ]
-                },
-                {
-                    id: '4-2',
-                    title: 'Express',
-                    tasks: [
-                        { title: 'Routing', detail: 'Defining application endpoints and URIs.', link: 'https://expressjs.com/en/guide/routing.html' },
-                        { title: 'Middleware', detail: 'Functions that execute during the request cycle.', link: 'https://expressjs.com/en/guide/using-middleware.html' }
+                        {
+                            title: 'The Virtual DOM',
+                            detail: 'Understand how React optimizes rendering.',
+                            link: 'https://react.dev/learn/preserving-and-resetting-state',
+                            breakdown: 'React uses a Virtual DOM to minimize actual DOM manipulations, which are expensive. It compares its virtual tree with the real one and only updates what has changed.',
+                            practice: { question: 'Why is the Virtual DOM faster?', hint: 'It batches updates.' }
+                        }
                     ]
                 }
             ]
         },
         {
-            id: '5', title: 'Database', status: 'locked', x: 1300, y: 350,
+            id: '5', title: 'Phase 5: State & Effects', status: 'locked', x: 1350, y: 500,
             subNodes: [
                 {
                     id: '5-1',
-                    title: 'SQL',
+                    title: 'Lifecycle Hooks',
                     tasks: [
-                        { title: 'Joins', detail: 'Combining rows from two or more tables.', link: 'https://www.w3schools.com/sql/sql_join.asp' },
-                        { title: 'Normalization', detail: 'Organizing data to reduce redundancy.', link: 'https://www.geeksforgeeks.org/normalization-in-dbms/' }
-                    ]
-                },
-                {
-                    id: '5-2',
-                    title: 'MongoDB',
-                    tasks: [
-                        { title: 'Schema Design', detail: 'Modeling data for flexible document storage.', link: 'https://www.mongodb.com/basics/data-modeling' },
-                        { title: 'Aggregation', detail: 'Processing data records to return computed results.', link: 'https://www.mongodb.com/docs/manual/aggregation/' }
+                        {
+                            title: 'useEffect Mastery',
+                            detail: 'Manage side effects and cleanup.',
+                            link: 'https://react.dev/reference/react/useEffect',
+                            breakdown: 'useEffect lets you synchronize a component with an external system. Choosing the right dependency array is key to performance.',
+                            practice: { question: 'What happens if you provide an empty dependency array []?', hint: 'It runs only once.' }
+                        }
                     ]
                 }
             ]
         },
         {
-            id: '6', title: 'Deployment', status: 'locked', x: 1600, y: 150,
+            id: '6', title: 'Phase 6: Deployment & CI', status: 'locked', x: 1650, y: 300,
             subNodes: [
                 {
                     id: '6-1',
-                    title: 'Docker',
+                    title: 'Cloud Platforms',
                     tasks: [
-                        { title: 'Containers', detail: 'Packaging apps with dependencies.', link: 'https://www.docker.com/resources/what-container/' },
-                        { title: 'Images', detail: 'Blueprints for creating containers.', link: 'https://docs.docker.com/get-started/02_our_app/' }
-                    ]
-                },
-                {
-                    id: '6-2',
-                    title: 'CI/CD',
-                    tasks: [
-                        { title: 'GitHub Actions', detail: 'Automating software workflows.', link: 'https://docs.github.com/en/actions' },
-                        { title: 'Pipelines', detail: 'Continuous integration and delivery steps.', link: 'https://www.atlassian.com/continuous-delivery/principles/continuous-integration-vs-delivery-vs-deployment' }
+                        {
+                            title: 'Vercel/Netlify Deploy',
+                            detail: 'Go live in under 5 minutes.',
+                            link: 'https://vercel.com/docs',
+                            breakdown: 'Modern platforms offer git-integrated deployment. Every push to your main branch can automatically trigger a build and update the live site.',
+                            practice: { question: 'What is a "Production Build"?', hint: 'Optimized code for users.' }
+                        }
                     ]
                 }
             ]
@@ -218,9 +222,16 @@ export async function parseCareerGoal(goal) {
 export async function generateQuestions(role) {
     if (role === 'Test Career' || !API_KEY || API_KEY.includes('...')) {
         return [
-            { id: 1, skill: 'Mock Skill A', question: 'Do you know Mock A?', context: 'Context A' },
-            { id: 2, skill: 'Mock Skill B', question: 'Do you know Mock B?', context: 'Context B' },
-            { id: 3, skill: 'Mock Skill C', question: 'Do you know Mock C?', context: 'Context C' }
+            { id: 1, skill: 'Terminal', question: 'Do you know how to use "cd" and "ls" in the terminal?', context: 'Basic navigation is essential.' },
+            { id: 2, skill: 'Git', question: 'Have you ever used "git commit" to save your work?', context: 'Version control saves lives.' },
+            { id: 3, skill: 'HTML', question: 'Can you tell the difference between a <div> and a <section>?', context: 'Semantic HTML is key for SEO.' },
+            { id: 4, skill: 'CSS', question: 'Have you built a layout using CSS Grid or Flexbox before?', context: 'Centering things shouldn\'t be a nightmare.' },
+            { id: 5, skill: 'JavaScript', question: 'Do you know what an Arrow Function is?', context: 'Modern JS syntax is cleaner.' },
+            { id: 6, skill: 'React', question: 'Have you used "useState" to manage data in a component?', context: 'Interactivity depends on state.' },
+            { id: 7, skill: 'API', question: 'Do you know how to fetch data from a JSON API?', context: 'Apps need real-world data.' },
+            { id: 8, skill: 'Node.js', question: 'Have you ever run a JavaScript file outside the browser?', context: 'Server-side JS is powerful.' },
+            { id: 9, skill: 'Database', question: 'Do you know what a Primary Key is in a database?', context: 'Data integrity matters.' },
+            { id: 10, skill: 'CI/CD', question: 'Have you ever deployed a website to Vercel or Netlify?', context: 'Sharing your work with the world.' }
         ]
     }
 
@@ -269,6 +280,10 @@ export async function generateRoadmap(role, knownSkills, gapSkills) {
     - Main Nodes: Major milestones (e.g., "Foundations", "Advanced Logic").
     - Sub Nodes: Exactly 2 specific topics per Main Node.
     - Tasks: 1-2 actionable resources/tasks per Sub Node. Tasks MUST include a title, detail, and a relevant link.
+
+    Status Rules:
+    - Set the FIRST node's status to "active".
+    - Set ALL subsequent nodes to "locked".
 
     Output strictly JSON in this format:
     {
