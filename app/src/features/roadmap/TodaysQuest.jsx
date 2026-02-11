@@ -48,7 +48,7 @@ export function TodaysQuest({ onClose }) {
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="fixed top-0 right-0 h-full w-80 bg-white border-l-3 border-black z-[100] shadow-[-8px_0px_0px_0px_#000] flex flex-col"
+                className="fixed top-0 right-0 h-full w-80 bg-white border-l-3 border-black z-[130] shadow-[-8px_0px_0px_0px_#000] flex flex-col"
             >
                 {/* Header */}
                 <div className="bg-black text-white px-4 py-3 flex items-center justify-between">

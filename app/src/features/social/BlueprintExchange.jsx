@@ -4,12 +4,18 @@ import { db } from '../../lib/firebase'
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore'
 import { useStore } from '../../lib/store'
 import { Odometer } from './Odometer'
-import { Share2, Lock, Unlock, Zap, Ghost } from 'lucide-react'
+import { Share2, Lock, Unlock, Zap, Ghost, Plus, Eye, Target } from 'lucide-react'
+import { BlueprintPreviewModal } from './BlueprintPreviewModal'
+import { AddRoadmapModal } from './AddRoadmapModal'
+import { PersonalizationChoiceModal } from './PersonalizationChoiceModal'
 
 export function BlueprintExchange() {
     const [blueprints, setBlueprints] = useState([])
     const [loading, setLoading] = useState(true)
-    const { stealBlueprint } = useStore()
+    const { reset, setShowExchange, stealBlueprint, createRoadmap } = useStore()
+    const [selectedBlueprint, setSelectedBlueprint] = useState(null)
+    const [showAddModal, setShowAddModal] = useState(false)
+    const [choiceBlueprint, setChoiceBlueprint] = useState(null)
 
     useEffect(() => {
         const fetchBlueprints = async () => {
@@ -52,17 +58,65 @@ export function BlueprintExchange() {
                         SHARE YOUR PATH. STEAL THEIR KNOWLEDGE.
                     </p>
                 </div>
-                <div className="bg-black text-[#0f0] p-4 font-mono text-xs border-2 border-[#0f0]/30">
-                    NET_CONNECT: ESTABLISHED <br />
-                    DRIVES_READY: {blueprints.length}
+                <div className="flex flex-col items-end gap-3">
+                    <button
+                        onClick={() => setShowAddModal(true)}
+                        className="bg-white border-4 border-black px-6 py-3 font-black uppercase text-sm shadow-[4px_4px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center gap-2 group"
+                    >
+                        <Plus size={20} strokeWidth={3} className="group-hover:rotate-90 transition-transform" />
+                        Add Roadmap
+                    </button>
+                    <div className="bg-black text-[#0f0] p-4 font-mono text-xs border-2 border-[#0f0]/30 text-right">
+                        NET_CONNECT: ESTABLISHED <br />
+                        DRIVES_READY: {blueprints.length}
+                    </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {blueprints.map((bp) => (
-                    <BlueprintCard key={bp.id} blueprint={bp} onSteal={() => stealBlueprint(bp)} />
+                    <BlueprintCard
+                        key={bp.id}
+                        blueprint={bp}
+                        onClick={() => setSelectedBlueprint(bp)}
+                        onAdd={() => setChoiceBlueprint(bp)}
+                    />
                 ))}
             </div>
+
+            <AnimatePresence>
+                {selectedBlueprint && (
+                    <BlueprintPreviewModal
+                        blueprint={selectedBlueprint}
+                        onClose={() => setSelectedBlueprint(null)}
+                        onSteal={() => {
+                            setChoiceBlueprint(selectedBlueprint)
+                            setSelectedBlueprint(null)
+                        }}
+                    />
+                )}
+
+                {showAddModal && (
+                    <AddRoadmapModal
+                        onClose={() => setShowAddModal(false)}
+                        onSubmit={async (goal, deadline) => {
+                            await createRoadmap(goal, deadline)
+                            setShowExchange(false)
+                        }}
+                    />
+                )}
+
+                {choiceBlueprint && (
+                    <PersonalizationChoiceModal
+                        blueprint={choiceBlueprint}
+                        onClose={() => setChoiceBlueprint(null)}
+                        onChoice={async (personalize) => {
+                            await stealBlueprint(choiceBlueprint, personalize)
+                            setChoiceBlueprint(null)
+                        }}
+                    />
+                )}
+            </AnimatePresence>
 
             {blueprints.length === 0 && (
                 <div className="border-4 border-dashed border-black/20 p-20 text-center">
@@ -74,22 +128,12 @@ export function BlueprintExchange() {
     )
 }
 
-function BlueprintCard({ blueprint, onSteal }) {
-    const [isStealing, setIsStealing] = useState(false)
-
-    const handleSteal = async () => {
-        setIsStealing(true)
-        try {
-            await onSteal()
-        } finally {
-            setIsStealing(false)
-        }
-    }
-
+function BlueprintCard({ blueprint, onClick, onAdd }) {
     return (
         <motion.div
             whileHover={{ scale: 1.01, translateY: -5 }}
-            className="group relative bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-6 flex flex-col h-full hover:shadow-[12px_12px_0px_0px_#000] transition-all"
+            onClick={onClick}
+            className="group relative bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-6 flex flex-col h-full hover:shadow-[12px_12px_0px_0px_#000] cursor-pointer transition-all"
         >
             <div className="flex justify-between items-start mb-4">
                 <div className="bg-black text-white px-3 py-1 text-xs font-black uppercase italic">
@@ -121,25 +165,16 @@ function BlueprintCard({ blueprint, onSteal }) {
                     <span className="flex items-center gap-1"><Zap size={12} /> {blueprint.difficulty || 'Expert'}</span>
                 </div>
 
-                <button
-                    onClick={handleSteal}
-                    disabled={isStealing}
-                    className={`
-                        w-full py-4 font-black uppercase text-xl italic border-4 border-black 
-                        shadow-[4px_4px_0px_0px_#000] active:shadow-none active:translate-y-1 
-                        transition-all flex items-center justify-center gap-3
-                        ${isStealing ? 'bg-gray-200 cursor-not-allowed' : 'bg-brutal-red text-white hover:bg-black'}
-                    `}
+                <div
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onAdd();
+                    }}
+                    className="w-full py-4 font-black uppercase text-xl italic border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:bg-brutal-green transition-all flex items-center justify-center gap-3 bg-white"
                 >
-                    {isStealing ? (
-                        <div className="w-5 h-5 border-2 border-black border-t-transparent animate-spin rounded-full" />
-                    ) : (
-                        <>
-                            <Share2 size={24} strokeWidth={3} />
-                            Steal Document
-                        </>
-                    )}
-                </button>
+                    <Plus size={24} strokeWidth={3} />
+                    Add Roadmap
+                </div>
             </div>
         </motion.div>
     )

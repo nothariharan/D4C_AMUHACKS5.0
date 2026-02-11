@@ -27,13 +27,17 @@ export function Sidebar() {
     }
 
     const handleSelect = (id) => {
-        if (id === activeSessionId) return
+        // If clicking same session while in exchange, we still want to exit exchange
+        if (id === activeSessionId && !showExchange) {
+            setIsOpen(false)
+            return
+        }
+
         playClunk()
         setShakeId(id)
         setTimeout(() => setShakeId(null), 500)
-        switchSession(id)
-        // Optionally close sidebar on mobile, or keep it open for "inserted" feel
-        // setIsOpen(false) 
+        switchSession(id) // Now handles setShowExchange(false)
+        setIsOpen(false)
     }
 
     const getStatusInfo = (session) => {

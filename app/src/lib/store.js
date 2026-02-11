@@ -8,7 +8,7 @@ import { create } from 'zustand';
 import { db } from './firebase'; // Ensure db is correctly imported from your firebase.js
 import { doc, writeBatch, Timestamp } from 'firebase/firestore'; // Import necessary Firestore functions
 
-import { generateRoadmap } from './gemini';
+import { generateRoadmap, parseCareerGoal, generateQuestions } from './gemini';
 // Assuming uuidv4 is still used for session IDs; if not, use generateId for consistency.
 // import { v4 as uuidv4 } from 'uuid'; // User will need to install this or we use a simple random string
 
@@ -183,7 +183,7 @@ export const useStore = create((set, get) => ({
     },
 
     switchSession: (id) => {
-        set({ activeSessionId: id, currentTaskIds: null });
+        set({ activeSessionId: id, currentTaskIds: null, showExchange: false });
         get().setLastActive();
     },
     setCurrentTask: (ids) => set({ currentTaskIds: ids }),
@@ -538,33 +538,53 @@ export const useStore = create((set, get) => ({
         }
     },
 
-    stealBlueprint: async (blueprint) => {
+    stealBlueprint: async (blueprint, personalize = true) => {
         const state = get();
         if (!state.user) return;
 
         const newId = generateId();
+
+        // Prepare nodes (reset status for new user)
+        let nodes = blueprint.roadmap?.nodes || [];
+        if (!personalize) {
+            nodes = nodes.map((node, i) => ({
+                ...node,
+                status: i === 0 ? 'active' : 'locked',
+                subNodes: (node.subNodes || []).map(sn => ({
+                    ...sn,
+                    tasks: (sn.tasks || []).map(t => {
+                        const tObj = typeof t === 'string' ? { title: t } : { ...t };
+                        return { ...tObj, completed: false, completedAt: null, evidence: [] };
+                    })
+                }))
+            }));
+        }
+
         const stolenSession = {
             ...blueprint,
             id: newId,
             status: "active",
-            phase: 'blueprint-assessment', // Special phase for tailoring
+            phase: personalize ? 'blueprint-assessment' : 'roadmap',
             isStolen: true,
             originId: blueprint.id,
             createdAt: new Date().toISOString(),
             dailyLog: {},
             streak: 0,
             knownSkills: [],
-            gapSkills: []
+            gapSkills: [],
+            roadmap: personalize ? blueprint.roadmap : { ...blueprint.roadmap, nodes }
         };
 
-        // UI Feedback: Switch to the new session and landing (temporarily) while generating
+        // UI Feedback: Switch to the new session
         set({ showExchange: false, activeSessionId: newId });
 
         try {
-            // Generate tailoring questions immediately
-            const { generateTailoringQuestions } = await import('./gemini');
-            const tailoringQuestions = await generateTailoringQuestions(blueprint.role || blueprint.goal, blueprint.roadmap?.nodes || []);
-            stolenSession.questions = tailoringQuestions;
+            if (personalize) {
+                // Generate tailoring questions immediately
+                const { generateTailoringQuestions } = await import('./gemini');
+                const tailoringQuestions = await generateTailoringQuestions(blueprint.role || blueprint.goal, blueprint.roadmap?.nodes || []);
+                stolenSession.questions = tailoringQuestions;
+            }
 
             // Increment counter in Firestore via Transaction
             const blueprintRef = doc(db, "public_blueprints", blueprint.id);
@@ -585,7 +605,7 @@ export const useStore = create((set, get) => ({
             return newId;
         } catch (error) {
             console.error("Steal Error:", error);
-            // Fallback: If AI fails, still allow the steal with default status
+            // Fallback: Still allow the steal
             set(s => ({
                 sessions: { ...s.sessions, [newId]: stolenSession },
             }));
@@ -614,6 +634,37 @@ export const useStore = create((set, get) => ({
             }
         }));
         get().syncToFirestore();
+    },
+
+    createRoadmap: async (goal, deadline) => {
+        // 1. Parse goal via Gemini
+        const result = await parseCareerGoal(goal);
+        if (!result.isValid) throw new Error("Invalid goal");
+
+        const now = new Date();
+        let daysToAdd = 90;
+        const match = deadline.toLowerCase().match(/(\d+)\s*(month|week|day|year)/);
+        if (match) {
+            const val = parseInt(match[1]);
+            const unit = match[2];
+            if (unit.startsWith('day')) daysToAdd = val;
+            else if (unit.startsWith('week')) daysToAdd = val * 7;
+            else if (unit.startsWith('month')) daysToAdd = val * 30;
+            else if (unit.startsWith('year')) daysToAdd = val * 365;
+        }
+        const targetDate = new Date(now.getTime() + daysToAdd * 24 * 60 * 60 * 1000).toISOString();
+
+        // 2. Create Session
+        const id = get().createSession(goal, result.role, targetDate);
+
+        // 3. Generate questions
+        const questions = await generateQuestions(result.role);
+        if (questions && questions.length > 0) {
+            get().setQuestions(questions);
+        } else {
+            throw new Error("Failed to generate questions");
+        }
+        return id;
     }
 
 }));

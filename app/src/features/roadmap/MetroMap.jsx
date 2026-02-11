@@ -149,17 +149,21 @@ export function MetroMap() {
                         <>
                             {/* Zoom Controls - Bottom Left */}
                             <div className="absolute bottom-8 left-8 flex flex-col gap-2 z-50">
-                                <button onClick={() => zoomIn()} className="w-10 h-10 bg-white border-2 border-black flex items-center justify-center shadow-brutal hover:bg-brutal-yellow active:translate-y-1 active:shadow-none transition-all">
+                                <button type="button" onClick={() => zoomIn()} className="w-10 h-10 bg-white border-2 border-black flex items-center justify-center shadow-brutal hover:bg-brutal-yellow active:translate-y-1 active:shadow-none transition-all">
                                     <Plus size={20} />
                                 </button>
-                                <button onClick={() => zoomOut()} className="w-10 h-10 bg-white border-2 border-black flex items-center justify-center shadow-brutal hover:bg-brutal-yellow active:translate-y-1 active:shadow-none transition-all">
+                                <button type="button" onClick={() => zoomOut()} className="w-10 h-10 bg-white border-2 border-black flex items-center justify-center shadow-brutal hover:bg-brutal-yellow active:translate-y-1 active:shadow-none transition-all">
                                     <Minus size={20} />
                                 </button>
                             </div>
 
                             {/* FAB Menu - Top Right */}
-                            <div className="absolute top-6 right-6 flex flex-col items-end gap-2 z-50">
-                                <button onClick={() => setShowFABMenu(!showFABMenu)} className={`w-16 h-16 border-2 border-black flex items-center justify-center shadow-brutal active:translate-y-1 active:shadow-none transition-all ${showFABMenu ? 'bg-brutal-yellow' : 'bg-white hover:bg-brutal-yellow'}`}>
+                            <div className="absolute top-6 right-6 flex flex-col items-end gap-2 z-[100]">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowFABMenu(!showFABMenu)}
+                                    className={`w-16 h-16 border-2 border-black flex items-center justify-center shadow-brutal active:translate-y-1 active:shadow-none transition-all ${showFABMenu ? 'bg-brutal-yellow' : 'bg-white hover:bg-brutal-yellow'}`}
+                                >
                                     <ClipboardList size={32} />
                                 </button>
 
@@ -179,6 +183,7 @@ export function MetroMap() {
                                             ].map((item, idx) => (
                                                 <motion.button
                                                     key={idx}
+                                                    type="button"
                                                     initial={{ x: 20, opacity: 0 }}
                                                     animate={{ x: 0, opacity: 1 }}
                                                     transition={{ delay: idx * 0.05 }}
