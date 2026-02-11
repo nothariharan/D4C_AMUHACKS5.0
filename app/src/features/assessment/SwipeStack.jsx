@@ -3,8 +3,8 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-mo
 import { Check, X } from 'lucide-react'
 import { useStore } from '../../lib/store'
 
-export function SwipeStack() {
-    const { sessions, activeSessionId, answerQuestion } = useStore()
+export function SwipeStack({ isTailoring }) {
+    const { sessions, activeSessionId, answerQuestion, tailorBlueprint } = useStore()
     const session = sessions[activeSessionId]
 
     const questions = session?.questions || []
@@ -17,9 +17,19 @@ export function SwipeStack() {
 
     const [direction, setDirection] = useState(0)
 
-    const handleSwipe = (dir) => {
+    const handleSwipe = async (dir) => {
         setDirection(dir === 'right' ? 1 : -1)
-        answerQuestion(currentQuestion.skill, dir === 'right')
+
+        const isLastQuestion = currentQuestionIndex === questions.length - 1
+
+        if (isTailoring && isLastQuestion) {
+            // Process the final answer then trigger tailoring
+            const newKnown = dir === 'right' ? [...session.knownSkills, currentQuestion.skill] : session.knownSkills
+            const newGap = dir === 'right' ? session.gapSkills : [...session.gapSkills, currentQuestion.skill]
+            await tailorBlueprint(activeSessionId, newKnown, newGap)
+        } else {
+            answerQuestion(currentQuestion.skill, dir === 'right')
+        }
     }
 
     // Loading State

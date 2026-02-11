@@ -13,6 +13,8 @@ import { parseCareerGoal, generateQuestions } from './lib/gemini';
 import { Sidebar } from './components/layout/Sidebar';
 import { AuthModal } from './features/auth/AuthModal';
 import { ContributionGrid } from './features/auth/ContributionGrid';
+import { BlueprintExchange } from './features/social/BlueprintExchange';
+import { generateTailoringQuestions } from './lib/gemini';
 
 import { User } from 'lucide-react';
 import { ProfilePage } from './features/profile/ProfilePage';
@@ -36,6 +38,8 @@ function App() {
     setCurrentTask,          // For navigating to a specific task
     completeTask,            // For marking tasks complete (triggers sync)
     engagementMetrics,       // To display user-specific metrics
+    showExchange,
+    setShowExchange,
   } = useStore();
 
   const activeSession = sessions[activeSessionId];
@@ -366,25 +370,31 @@ function App() {
         <div className="w-full flex justify-center mt-12 min-h-[400px]">
           <AnimatePresence mode="wait">
             <motion.div
-              key={activeSessionId + phase}
+              key={activeSessionId + phase + showExchange}
               initial={{ x: 100, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -100, opacity: 0 }}
               transition={{ type: 'spring', damping: 20, stiffness: 100 }}
               className="w-full flex justify-center"
             >
-              {phase === 'landing' && (
-                <GoalInput onSubmit={handleGoalSubmit} disabled={!isInitialLoadComplete} />
-              )}
+              {showExchange ? (
+                <BlueprintExchange />
+              ) : (
+                <>
+                  {phase === 'landing' && (
+                    <GoalInput onSubmit={handleGoalSubmit} disabled={!isInitialLoadComplete} />
+                  )}
 
-              {phase === 'assessment' && (
-                <SwipeStack />
-              )}
+                  {(phase === 'assessment' || phase === 'blueprint-assessment') && (
+                    <SwipeStack isTailoring={phase === 'blueprint-assessment'} />
+                  )}
 
-              {phase === 'roadmap' && (
-                <div className="w-full">
-                  <MetroMap />
-                </div>
+                  {phase === 'roadmap' && (
+                    <div className="w-full">
+                      <MetroMap />
+                    </div>
+                  )}
+                </>
               )}
             </motion.div>
           </AnimatePresence>

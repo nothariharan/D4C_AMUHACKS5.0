@@ -264,6 +264,47 @@ export async function generateQuestions(role) {
     }
 }
 
+/**
+ * Generates 5 tailoring questions for a forked (stolen) roadmap.
+ */
+export async function generateTailoringQuestions(goal, nodes) {
+    const nodeTitles = nodes.map(n => n.title).join(", ");
+    const prompt = `
+    The user is "stealing" a roadmap for: "${goal}".
+    The existing roadmap contains these key milestones: ${nodeTitles}.
+    
+    Generate exactly 5 brief, punchy technical questions to determine the user's specific experience with these milestones so we can tailor the roadmap for them.
+    
+    Status Rules:
+    - Keep questions focused on practical experience.
+    - Output strictly JSON in this format:
+    {
+      "questions": [
+        { "id": "q1", "skill": "Skill Name", "question": "Question text?", "context": "Brief context why this matters" }
+      ]
+    }
+    `;
+
+    try {
+        const response = await client.chat.completions.create({
+            model: MODEL,
+            messages: [{ role: "user", content: prompt }],
+            response_format: { type: "json_object" }
+        });
+
+        const content = response.choices[0].message.content;
+        return JSON.parse(content).questions;
+    } catch (error) {
+        console.error("AI Tailoring Question Error:", error);
+        return (nodes || []).slice(0, 5).map((n, i) => ({
+            id: `tailor-${i}`,
+            skill: n.title,
+            question: `How much experience do you already have with ${n.title}?`,
+            context: "We'll skip or shorten this phase if you're already an expert."
+        }));
+    }
+}
+
 export async function generateRoadmap(role, knownSkills, gapSkills) {
     if (role === 'Test Career' || !API_KEY || API_KEY.includes('...')) {
         return MOCK_ROADMAP;

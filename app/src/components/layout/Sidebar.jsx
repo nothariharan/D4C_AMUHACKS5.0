@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, ChevronRight, Plus } from 'lucide-react'
+import { Menu, X, ChevronRight, Plus, Globe, Share2 } from 'lucide-react'
 import { useStore } from '../../lib/store'
 import { useSound } from '../../hooks/useSound'
 
 export function Sidebar() {
     const [isOpen, setIsOpen] = useState(false)
-    const { sessions, activeSessionId, switchSession, reset } = useStore()
+    const { sessions, activeSessionId, switchSession, reset, showExchange, setShowExchange } = useStore()
     const { playClunk } = useSound()
     const [shakeId, setShakeId] = useState(null)
 
@@ -17,6 +17,12 @@ export function Sidebar() {
 
     const handleNewGoal = () => {
         reset() // Set activeSessionId to null -> Landing
+        setShowExchange(false)
+        setIsOpen(false)
+    }
+
+    const handleOpenExchange = () => {
+        setShowExchange(true)
         setIsOpen(false)
     }
 
@@ -93,6 +99,16 @@ export function Sidebar() {
                                 LOAD NEW DISK
                             </motion.button>
 
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={handleOpenExchange}
+                                className={`w-full flex items-center justify-center gap-2 p-4 border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all font-black uppercase text-sm italic ${showExchange ? 'bg-brutal-yellow' : 'bg-white'}`}
+                            >
+                                <Globe size={20} strokeWidth={3} />
+                                BLUEPRINT_EXCHANGE
+                            </motion.button>
+
                             <div className="space-y-4">
                                 {sessionList.map(session => {
                                     const { hasCobwebs, isMissed } = getStatusInfo(session)
@@ -112,10 +128,16 @@ export function Sidebar() {
                                                 ${isActive ? 'translate-x-4' : 'hover:translate-x-2'}
                                             `}
                                         >
+                                            {/* Fork Tag */}
+                                            {session.isStolen && (
+                                                <div className="absolute -top-2 -right-2 z-20 bg-pink-500 text-white px-2 py-0.5 text-[8px] font-black uppercase border-2 border-black rotate-12">
+                                                    STOLEN
+                                                </div>
+                                            )}
                                             {/* Cartridge Shape */}
                                             <div className={`
                                                 p-4 border-4 border-black shadow-[4px_4px_0px_0px_#000] 
-                                                ${isActive ? 'bg-brutal-blue text-white shadow-none' : 'bg-brutal-white'}
+                                                ${isActive ? 'bg-brutal-blue text-white shadow-none' : (session.isStolen ? 'bg-pink-100' : 'bg-brutal-white')}
                                                 relative overflow-hidden
                                             `}>
                                                 {/* Grip Lines (Cartridge Detail) */}

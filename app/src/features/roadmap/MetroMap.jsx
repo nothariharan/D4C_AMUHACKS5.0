@@ -8,9 +8,21 @@ import { NextUpPanel } from './NextUpPanel'
 import { TodaysQuest } from './TodaysQuest'
 
 export function MetroMap() {
-    const { sessions, activeSessionId, currentTaskIds, setCurrentTask, updateNodePosition, completeTask } = useStore()
+    const { sessions, activeSessionId, currentTaskIds, setCurrentTask, updateNodePosition, completeTask, publishBlueprint } = useStore()
     const activeSession = sessions[activeSessionId]
     const roadmap = activeSession?.roadmap
+
+    const [isPublishing, setIsPublishing] = useState(false)
+
+    const handlePublish = async () => {
+        setIsPublishing(true)
+        try {
+            await publishBlueprint(activeSessionId)
+            alert("Roadmap Published to Network! 🚀")
+        } finally {
+            setIsPublishing(false)
+        }
+    }
 
     // Local state for nodes to allow dragging
     const [localNodes, setLocalNodes] = useState([])
@@ -161,6 +173,7 @@ export function MetroMap() {
                                         >
                                             {[
                                                 { icon: <CalendarCheck size={20} />, label: "Today's Quest", action: () => { setShowQuest(true); setShowFABMenu(false); } },
+                                                ...(!activeSession?.isStolen ? [{ icon: <Share2 size={20} />, label: isPublishing ? 'Uploading...' : 'Publish to Exchange', action: handlePublish }] : []),
                                                 { icon: <MessageCircleQuestion size={20} />, label: 'AI Explain', action: () => { } },
                                                 { icon: <BookMarked size={20} />, label: 'Review Later', action: () => { } },
                                             ].map((item, idx) => (

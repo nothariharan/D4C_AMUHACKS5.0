@@ -41,6 +41,7 @@ export const useStore = create((set, get) => ({
     sessions: {},           // Keyed by ID: { id, goal, role, deadline, phase, questions, roadmap, dailyLog, etc. }
     activeSessionId: null,
     currentTaskIds: null,   // { nodeId, subNodeId, taskIndex } or null
+    showExchange: false,    // Toggles the Blueprint Marketplace view
 
     isInitialLoadComplete: false, // Tracks if first Firestore hydration is done
 
@@ -84,6 +85,13 @@ export const useStore = create((set, get) => ({
     })),
     setInitialLoadComplete: (status) => set({ isInitialLoadComplete: status }),
     setActiveSessionId: (id) => set({ activeSessionId: id }),
+    setShowExchange: (show) => set({ showExchange: show, activeSessionId: show ? null : get().activeSessionId }),
+    setPhase: (sessionId, phase) => set(state => ({
+        sessions: {
+            ...state.sessions,
+            [sessionId]: { ...state.sessions[sessionId], phase }
+        }
+    })),
 
     // Action to manage the "trap" modal visibility (used by AuthModal)
     closeTrap: () => set(state => ({
@@ -502,6 +510,110 @@ export const useStore = create((set, get) => ({
         activeSessionId: null,
         currentTaskIds: null,
         // DO NOT reset sessions or metrics here, just clear active context
-    })
+    }),
+
+    // ===========================================
+    // BLUEPRINT EXCHANGE ACTIONS
+    // ===========================================
+
+    publishBlueprint: async (sessionId) => {
+        const state = get();
+        const session = state.sessions[sessionId];
+        if (!session || !state.user) return;
+
+        const blueprintRef = doc(db, "public_blueprints", sessionId);
+        const blueprintData = {
+            ...session,
+            authorName: state.user.displayName,
+            authorId: state.user.uid,
+            stealCount: 0,
+            publishedAt: new Date().toISOString()
+        };
+
+        try {
+            await writeBatch(db).set(blueprintRef, blueprintData).commit();
+            console.log("Blueprint published!");
+        } catch (error) {
+            console.error("Publish Error:", error);
+        }
+    },
+
+    stealBlueprint: async (blueprint) => {
+        const state = get();
+        if (!state.user) return;
+
+        const newId = generateId();
+        const stolenSession = {
+            ...blueprint,
+            id: newId,
+            status: "active",
+            phase: 'blueprint-assessment', // Special phase for tailoring
+            isStolen: true,
+            originId: blueprint.id,
+            createdAt: new Date().toISOString(),
+            dailyLog: {},
+            streak: 0,
+            knownSkills: [],
+            gapSkills: []
+        };
+
+        // UI Feedback: Switch to the new session and landing (temporarily) while generating
+        set({ showExchange: false, activeSessionId: newId });
+
+        try {
+            // Generate tailoring questions immediately
+            const { generateTailoringQuestions } = await import('./gemini');
+            const tailoringQuestions = await generateTailoringQuestions(blueprint.role || blueprint.goal, blueprint.roadmap?.nodes || []);
+            stolenSession.questions = tailoringQuestions;
+
+            // Increment counter in Firestore via Transaction
+            const blueprintRef = doc(db, "public_blueprints", blueprint.id);
+            const { runTransaction } = await import('firebase/firestore');
+
+            await runTransaction(db, async (transaction) => {
+                const bDoc = await transaction.get(blueprintRef);
+                if (!bDoc.exists()) throw "Blueprint deleted";
+                const newCount = (bDoc.data().stealCount || 0) + 1;
+                transaction.update(blueprintRef, { stealCount: newCount });
+            });
+
+            set(s => ({
+                sessions: { ...s.sessions, [newId]: stolenSession },
+            }));
+
+            get().syncToFirestore();
+            return newId;
+        } catch (error) {
+            console.error("Steal Error:", error);
+            // Fallback: If AI fails, still allow the steal with default status
+            set(s => ({
+                sessions: { ...s.sessions, [newId]: stolenSession },
+            }));
+            return newId;
+        }
+    },
+
+    tailorBlueprint: async (sessionId, knownSkills, gapSkills) => {
+        const state = get();
+        const session = state.sessions[sessionId];
+        if (!session) return;
+
+        // Re-generate roadmap using existing goal but new skill profile
+        const newRoadmap = await generateRoadmap(session.goal, knownSkills, gapSkills);
+
+        set(s => ({
+            sessions: {
+                ...s.sessions,
+                [sessionId]: {
+                    ...session,
+                    roadmap: newRoadmap,
+                    knownSkills,
+                    gapSkills,
+                    phase: 'roadmap'
+                }
+            }
+        }));
+        get().syncToFirestore();
+    }
 
 }));
