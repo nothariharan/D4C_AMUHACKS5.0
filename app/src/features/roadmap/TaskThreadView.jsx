@@ -8,6 +8,7 @@ export function TaskThreadView({ task, onClose, onComplete }) {
     const [activeTab, setActiveTab] = useState('breakdown')
     const [evidenceLink, setEvidenceLink] = useState('')
     const [evidenceNotes, setEvidenceNotes] = useState('')
+    const [showEvidenceWarning, setShowEvidenceWarning] = useState(false)
 
     const handleSaveEvidence = () => {
         if (!evidenceLink && !evidenceNotes) return
@@ -221,6 +222,15 @@ export function TaskThreadView({ task, onClose, onComplete }) {
                                     onComplete(); // Just close if already done
                                     return;
                                 }
+
+                                // ENFORCEMENT: Check for evidence (either existing or currently in fields)
+                                const hasEvidence = (task.evidence && task.evidence.length > 0);
+
+                                if (!hasEvidence) {
+                                    setShowEvidenceWarning(true);
+                                    return;
+                                }
+
                                 if (task.nodeId && task.subNodeId && task.taskIndex !== undefined) {
                                     completeTask(task.nodeId, task.subNodeId, task.taskIndex);
                                     onComplete();
@@ -237,6 +247,45 @@ export function TaskThreadView({ task, onClose, onComplete }) {
                             <CheckCircle size={24} /> {task.completed ? 'Completed' : 'Mark Complete'}
                         </button>
                     </div>
+
+                    {/* BRUTALIST EVIDENCE WARNING POPUP */}
+                    <AnimatePresence>
+                        {showEvidenceWarning && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 z-[300] flex items-center justify-center p-6 bg-brutal-red/90 backdrop-blur-sm"
+                            >
+                                <motion.div
+                                    initial={{ scale: 0.9, rotate: -5 }}
+                                    animate={{ scale: 1, rotate: 0 }}
+                                    exit={{ scale: 0.9, rotate: 5 }}
+                                    className="bg-white border-8 border-black p-8 max-w-lg shadow-[16px_16px_0px_0px_#000] text-center"
+                                >
+                                    <div className="bg-black text-white p-4 mb-6 -rotate-2 inline-block">
+                                        <Trophy size={64} strokeWidth={3} className="mx-auto" />
+                                    </div>
+                                    <h3 className="text-5xl font-black uppercase italic leading-none mb-4 tracking-tighter">
+                                        NO PROOF <br /> NO WIN.
+                                    </h3>
+                                    <p className="font-mono text-lg font-bold mb-8 uppercase leading-tight">
+                                        YOU CAN'T SHIP WITHOUT EVIDENCE. <br />
+                                        ADD A LINK OR NOTES TO VALIDATE THIS TASK.
+                                    </p>
+                                    <button
+                                        onClick={() => {
+                                            setShowEvidenceWarning(false);
+                                            setActiveTab('evidence');
+                                        }}
+                                        className="w-full bg-brutal-yellow border-4 border-black py-4 font-black text-2xl uppercase shadow-[8px_8px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+                                    >
+                                        I'LL ADD PROOF
+                                    </button>
+                                </motion.div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </motion.div>
             </div>
         </AnimatePresence>
