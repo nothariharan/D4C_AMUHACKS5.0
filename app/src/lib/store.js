@@ -729,9 +729,9 @@ export const useStore = create((set, get) => ({
             lastActiveDate: new Date().toISOString(),
             isStolen: true,
             provenance, // Store forking history
-            phase: personalize ? 'assessment' : 'roadmap', // Only assess if personalizing
+            phase: personalize ? 'blueprint-assessment' : 'roadmap', // Use blueprint-assessment for tailoring
             currentQuestionIndex: 0,
-            questions: blueprint.questions || [],
+            questions: [], // Clear initially to show loading state while AI thinks
             answers: {},
             knownSkills: [],
             gapSkills: [],
@@ -839,18 +839,30 @@ export const useStore = create((set, get) => ({
         const session = state.sessions[sessionId];
         if (!session) return;
 
-        // Re-generate roadmap using existing goal but new skill profile
-        const newRoadmap = await generateRoadmap(session.goal, knownSkills, gapSkills);
-
+        // Set phase to roadmap to show "Generating Map..." loading state
         set(s => ({
             sessions: {
                 ...s.sessions,
                 [sessionId]: {
                     ...session,
-                    roadmap: newRoadmap,
                     knownSkills,
                     gapSkills,
-                    phase: 'roadmap'
+                    phase: 'roadmap',
+                    roadmap: null // Clear old roadmap to ensure loading screen triggers
+                }
+            }
+        }));
+
+        // Re-generate roadmap using existing goal but new skill profile
+        const targetRole = session.role || session.goal;
+        const newRoadmap = await generateRoadmap(targetRole, knownSkills, gapSkills);
+
+        set(s => ({
+            sessions: {
+                ...s.sessions,
+                [sessionId]: {
+                    ...s.sessions[sessionId],
+                    roadmap: newRoadmap
                 }
             }
         }));

@@ -32,20 +32,30 @@ export function SwipeStack({ isTailoring }) {
         }
     }
 
-    // Loading State
+    // Loading State: Questions are being generated
     if (!questions || questions.length === 0) {
         return (
             <div className="w-full max-w-md h-[400px] bg-white brutal-border flex flex-col items-center justify-center gap-4 z-10">
                 <div className="w-16 h-16 border-4 border-black border-t-brutal-red rounded-full animate-spin"></div>
-                <h2 className="text-2xl font-black uppercase animate-pulse text-center px-4">Creating Assessment...</h2>
-                <p className="font-mono text-sm text-gray-500">Analyzing "{activeSessionId ? 'your goal' : 'career path'}"</p>
+                <h2 className="text-2xl font-black uppercase animate-pulse text-center px-4">
+                    {isTailoring ? "Initializing Tailoring..." : "Creating Assessment..."}
+                </h2>
+                <p className="font-mono text-sm text-gray-500">
+                    {isTailoring ? "Analyzing Blueprint Milestones" : `Analyzing "${activeSession?.goal || 'career path'}"`}
+                </p>
             </div>
         )
     }
 
-    // Finished State (should be handled by store/App, but safeguard)
+    // Finishing State: Last question swiped, tailoring in progress
     if (currentQuestionIndex >= questions.length || !currentQuestion) {
-        return null
+        return (
+            <div className="w-full max-w-md h-[400px] bg-white brutal-border flex flex-col items-center justify-center gap-4 z-10">
+                <div className="w-16 h-16 border-4 border-black border-t-brutal-yellow rounded-full animate-spin"></div>
+                <h2 className="text-2xl font-black uppercase animate-pulse text-center px-4">Recalibrating Map...</h2>
+                <p className="font-mono text-sm text-gray-500 italic">"Personalizing your path based on your experience"</p>
+            </div>
+        )
     }
 
     return (
