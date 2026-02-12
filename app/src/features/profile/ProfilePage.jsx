@@ -25,10 +25,11 @@ export function ProfilePage({ onClose }) {
     // Primary Skill (Just use current role for now)
     const primarySkill = activeSession?.role || "Explorer"
 
-    // Count Completed Goals (All nodes in a session must be 'completed')
+    // Count Completed Goals (Must master the Final Gauntlet)
     const goalsAchieved = Object.values(sessions).filter(s =>
         s.roadmap?.nodes?.length > 0 &&
-        s.roadmap.nodes.every(n => n.status === 'completed')
+        s.roadmap.nodes.every(n => n.status === 'completed') &&
+        s.gauntlet?.status === 'passed'
     ).length
 
     const handleLogout = async () => {

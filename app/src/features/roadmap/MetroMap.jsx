@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
-import { Check, Lock, Play, Plus, Minus, Info, ClipboardList, MessageCircleQuestion, BookMarked, CalendarCheck, Share2 } from 'lucide-react'
+import { Check, Lock, Play, Plus, Minus, Info, ClipboardList, MessageCircleQuestion, BookMarked, CalendarCheck, Share2, Trophy } from 'lucide-react'
 import { useStore } from '../../lib/store'
 import { TaskThreadView } from './TaskThreadView'
 import { NextUpPanel } from './NextUpPanel'
 
 export function MetroMap() {
-    const { sessions, activeSessionId, currentTaskIds, setCurrentTask, updateNodePosition, completeTask, publishBlueprint, setShowQuests } = useStore()
+    const { sessions, activeSessionId, currentTaskIds, setCurrentTask, updateNodePosition, completeTask, publishBlueprint, setShowQuests, setPhase } = useStore()
     const activeSession = sessions[activeSessionId]
     const roadmap = activeSession?.roadmap
 
@@ -103,7 +103,13 @@ export function MetroMap() {
 
     if (!roadmap) return null
 
+    const allNodesDone = roadmap.nodes.every(n => n.status === 'completed');
+
     const toggleNode = (nodeId) => {
+        if (allNodesDone) {
+            setPhase(activeSessionId, 'gauntlet-reveal');
+            return;
+        }
         setExpandedNodes(prev => ({ ...prev, [nodeId]: !prev[nodeId] }))
     }
 
@@ -180,6 +186,23 @@ export function MetroMap() {
                                     )}
                                 </AnimatePresence>
                             </div>
+
+                            {/* ENTER THE GAUNTLET CTA - Only if 100% complete and in roadmap phase */}
+                            {allNodesDone && (
+                                <motion.div
+                                    initial={{ y: 50, opacity: 0 }}
+                                    animate={{ y: 0, opacity: 1 }}
+                                    className="absolute bottom-8 right-8 z-[200]"
+                                >
+                                    <button
+                                        onClick={() => setPhase(activeSessionId, 'gauntlet-reveal')}
+                                        className="bg-brutal-green text-black px-8 py-4 border-4 border-black font-black text-2xl uppercase shadow-[8px_8px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center gap-4 group"
+                                    >
+                                        <Trophy size={32} className="group-hover:rotate-12 transition-transform" />
+                                        ENTER THE GAUNTLET
+                                    </button>
+                                </motion.div>
+                            )}
 
 
 

@@ -88,7 +88,7 @@ export function GauntletOverlay() {
                                         REVEAL MY GAUNTLET <ArrowRight strokeWidth={4} />
                                     </button>
                                     <button
-                                        onClick={() => window.location.href = '/'} // Redirect/Close logic
+                                        onClick={() => dismissGauntlet(activeSessionId)}
                                         className="bg-gray-100 text-gray-400 border-4 border-black px-8 py-5 font-black text-2xl uppercase hover:bg-white transition-all underline underline-offset-8 decoration-4 decoration-brutal-red"
                                     >
                                         NOT READY YET

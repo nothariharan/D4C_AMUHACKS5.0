@@ -49,6 +49,7 @@ function App() {
     setShowManifest,
     showQuests,
     setShowQuests,
+    setPhase,
     compileManifest
   } = useStore();
 
@@ -158,8 +159,30 @@ function App() {
     return () => unsubscribe();
   }, [setUser, logoutUser, setEngagementMetrics, setSessions, setActiveSessionId]); // Dependencies for useEffect
 
+  // GAUNTLET AUTO-TRIGGER: Detect 100% completion and transition to reveal phase
+  useEffect(() => {
+    if (!activeSession || activeSession.phase !== 'roadmap') return;
+
+    const roadmap = activeSession.roadmap;
+    if (!roadmap?.nodes) return;
+
+    const allNodesDone = roadmap.nodes.every(n => n.status === 'completed');
+    if (allNodesDone && !activeSession.gauntletDismissed) {
+      console.log("Roadmap 100% Complete. Triggering Gauntlet Reveal...");
+      setPhase(activeSessionId, 'gauntlet-reveal');
+    }
+  }, [activeSession, activeSessionId, setPhase]);
+
   // Time of Day theme calculation
   const timeOfDayBg = useMemo(() => {
+    // RED ALERT: Roadmap complete but Gauntlet pending
+    const allNodesDone = activeSession?.roadmap?.nodes?.every(n => n.status === 'completed');
+    const gauntletPassed = activeSession?.gauntlet?.status === 'passed';
+
+    if (allNodesDone && !gauntletPassed && phase === 'roadmap') {
+      return 'bg-brutal-red animate-pulse-slow';
+    }
+
     const hour = new Date().getHours();
     if (hour >= 6 && hour < 12) return 'bg-[#FFFBF0]'; // warm morning
     if (hour >= 12 && hour < 18) return 'bg-brutal-white'; // neutral afternoon
@@ -228,6 +251,7 @@ function App() {
   // Find current focus: first incomplete task across all nodes
   const currentFocusTask = useMemo(() => {
     if (!activeSession?.roadmap?.nodes) return null;
+
     for (const node of activeSession.roadmap.nodes) {
       if (node.status === 'locked') continue;
       for (const sub of (node.subNodes || [])) {
@@ -240,12 +264,29 @@ function App() {
         }
       }
     }
+
+    // EDGE CASE: If all tasks are done but gauntlet is not completed
+    const allNodesDone = activeSession.roadmap.nodes.every(n => n.status === 'completed');
+    const gauntletPassed = activeSession.gauntlet?.status === 'passed';
+
+    if (allNodesDone && !gauntletPassed) {
+      return {
+        title: 'FINAL GAUNTLET',
+        isGauntlet: true,
+        brief: activeSession.gauntlet?.title || 'Capstone Challenge'
+      };
+    }
+
     return null;
   }, [activeSession]);
 
   // Handler for Start/Skip buttons
   const handleStartNow = () => {
     if (currentFocusTask) {
+      if (currentFocusTask.isGauntlet) {
+        setPhase(activeSessionId, 'gauntlet-reveal');
+        return;
+      }
       setCurrentTask({ nodeId: currentFocusTask.nodeId, subNodeId: currentFocusTask.subNodeId, taskIndex: currentFocusTask.taskIndex });
     }
   };
@@ -356,11 +397,14 @@ function App() {
             <div className="flex flex-col md:flex-row items-center justify-between border-t-2 border-black px-6 py-4 bg-gray-50 gap-3">
               <div className="flex items-center gap-3">
                 <span className="font-mono text-sm text-gray-500 uppercase whitespace-nowrap">Current Focus:</span>
-                <span className="font-black text-xl uppercase truncate max-w-md">{currentFocusTask ? currentFocusTask.title : 'All caught up! 🎉'}</span>
+                <span className={`font-black text-xl uppercase truncate max-w-md ${currentFocusTask?.isGauntlet ? 'text-brutal-red bg-black px-2' : ''}`}>
+                  {currentFocusTask ? currentFocusTask.title : 'All caught up! 🎉'}
+                </span>
               </div>
               <div className="flex gap-2">
-                <button onClick={handleStartNow} className="bg-brutal-green text-black px-5 py-2 border-2 border-black font-bold text-base uppercase shadow-[3px_3px_0px_0px_#000] hover:translate-y-0.5 hover:shadow-none transition-all flex items-center gap-2">
-                  <Play size={18} fill="currentColor" /> Start Now
+                <button onClick={handleStartNow} className={`${currentFocusTask?.isGauntlet ? 'bg-brutal-yellow' : 'bg-brutal-green'} text-black px-5 py-2 border-2 border-black font-bold text-base uppercase shadow-[3px_3px_0px_0px_#000] hover:translate-y-0.5 hover:shadow-none transition-all flex items-center gap-2`}>
+                  {currentFocusTask?.isGauntlet ? <Trophy size={18} /> : <Play size={18} fill="currentColor" />}
+                  {currentFocusTask?.isGauntlet ? 'Enter Gauntlet' : 'Start Now'}
                 </button>
                 <button onClick={handleSkip} className="bg-white text-black px-5 py-2 border-2 border-black font-bold text-base uppercase shadow-[3px_3px_0px_0px_#000] hover:translate-y-0.5 hover:shadow-none transition-all flex items-center gap-2">
                   <SkipForward size={18} fill="currentColor" /> Skip
@@ -457,6 +501,14 @@ function App() {
                   <div className="w-full">
                     <MetroMap />
                   </div>
+                )}
+
+                {phase === 'gauntlet-reveal' && (
+                  <GauntletOverlay />
+                )}
+
+                {phase === 'gauntlet-active' && (
+                  <GauntletWorkspace />
                 )}
               </motion.div>
             )}

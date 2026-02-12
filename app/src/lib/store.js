@@ -102,6 +102,20 @@ export const useStore = create((set, get) => ({
     setShowManifest: (show) => set({ showManifest: show }),
     setShowQuests: (show) => set({ showQuests: show }),
 
+    dismissGauntlet: (sessionId) => {
+        set(s => ({
+            sessions: {
+                ...s.sessions,
+                [sessionId]: {
+                    ...s.sessions[sessionId],
+                    phase: 'roadmap',
+                    gauntletDismissed: true
+                }
+            }
+        }));
+        get().syncToFirestore();
+    },
+
     compileManifest: async () => {
         const state = get();
         if (!state.isLoggedIn || !state.user) return;
@@ -924,6 +938,7 @@ export const useStore = create((set, get) => ({
                 [sessionId]: {
                     ...s.sessions[sessionId],
                     phase: 'gauntlet-active',
+                    gauntletDismissed: false, // Reset if they finally start
                     gauntlet: {
                         ...s.sessions[sessionId].gauntlet,
                         status: 'in_progress',
