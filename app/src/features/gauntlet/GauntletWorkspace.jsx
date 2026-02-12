@@ -9,7 +9,7 @@ import Editor from '@monaco-editor/react';
 import { useStore } from '../../lib/store';
 
 export function GauntletWorkspace() {
-    const { activeSessionId, sessions, submitGauntlet } = useStore();
+    const { activeSessionId, sessions, submitGauntlet, dismissGauntlet } = useStore();
     const session = sessions[activeSessionId];
     const gauntlet = session?.gauntlet;
 
@@ -40,7 +40,7 @@ export function GauntletWorkspace() {
     return (
         <div className="fixed inset-0 z-[600] bg-white flex flex-col font-mono">
             {/* TOP BAR */}
-            <div className="h-16 bg-black text-white flex items-center justify-between px-6 border-b-4 border-black">
+            <div className="h-16 bg-black text-white flex items-center justify-between px-6 border-b-4 border-black relative">
                 <div className="flex items-center gap-4">
                     <div className="bg-brutal-red p-1 rotate-12">
                         <Terminal size={20} strokeWidth={3} />
@@ -49,6 +49,18 @@ export function GauntletWorkspace() {
                         GAUNTLET_WORKSPACE // {gauntlet.title}
                     </h2>
                 </div>
+
+                {/* ESCAPE HATCH: Centered "NOT READY" Button */}
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                    <button
+                        onClick={() => dismissGauntlet(activeSessionId)}
+                        className="bg-brutal-red text-white px-8 py-3 border-4 border-black font-black uppercase text-xl hover:translate-y-1 hover:shadow-none transition-all shadow-[8px_8px_0px_0px_#000] flex items-center gap-3 group"
+                    >
+                        <XCircle size={24} className="group-hover:rotate-90 transition-transform" />
+                        NOT READY YET
+                    </button>
+                </div>
+
                 <div className="flex items-center gap-6">
                     <div className="hidden md:flex items-center gap-2 text-brutal-yellow">
                         <Clock size={18} />

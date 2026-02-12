@@ -17,7 +17,7 @@ import { BlueprintExchange } from './features/social/BlueprintExchange';
 import { TheManifest } from './features/manifest/TheManifest';
 import { generateTailoringQuestions } from './lib/gemini';
 
-import { User, Zap, Flame, Clock, Timer, AlertTriangle, Volume2, VolumeX, Play, SkipForward, Terminal } from 'lucide-react';
+import { User, Zap, Flame, Clock, Timer, AlertTriangle, Volume2, VolumeX, Play, SkipForward, Terminal, Trophy } from 'lucide-react';
 import { ProfilePage } from './features/profile/ProfilePage';
 import { LoadingScreen } from './components/common/LoadingScreen';
 import { GauntletOverlay } from './features/gauntlet/GauntletOverlay';
@@ -176,7 +176,8 @@ function App() {
   // Time of Day theme calculation
   const timeOfDayBg = useMemo(() => {
     // RED ALERT: Roadmap complete but Gauntlet pending
-    const allNodesDone = activeSession?.roadmap?.nodes?.every(n => n.status === 'completed');
+    const nodes = activeSession?.roadmap?.nodes;
+    const allNodesDone = nodes && nodes.length > 0 && nodes.every(n => n.status === 'completed');
     const gauntletPassed = activeSession?.gauntlet?.status === 'passed';
 
     if (allNodesDone && !gauntletPassed && phase === 'roadmap') {
@@ -187,7 +188,7 @@ function App() {
     if (hour >= 6 && hour < 12) return 'bg-[#FFFBF0]'; // warm morning
     if (hour >= 12 && hour < 18) return 'bg-brutal-white'; // neutral afternoon
     return 'bg-[#F0F0F5]'; // cool night
-  }, []);
+  }, [activeSession, phase]);
 
 
   // Helper to parse "3 months", "2 weeks", etc. for deadlines
@@ -320,7 +321,7 @@ function App() {
       <AnimatePresence>
         {!isInitialLoadComplete && <LoadingScreen />}
       </AnimatePresence>
-      <Sidebar />
+      {phase !== 'gauntlet-active' && <Sidebar />}
       {/* AuthModal will appear based on engagementMetrics.showTrap state */}
       {engagementMetrics.showTrap && <AuthModal />}
       {showProfile && <ProfilePage onClose={() => setShowProfile(false)} />}
@@ -333,26 +334,28 @@ function App() {
       )}
 
       {/* Profile Icon - Top Right Absolute */}
-      <div className="fixed top-4 right-4 z-[100] flex flex-col gap-3 items-end">
-        <button
-          onClick={() => setShowProfile(true)}
-          className="bg-white border-2 border-black p-2 shadow-brutal hover:translate-y-0.5 hover:shadow-none transition-all"
-          title="View Profile"
-        >
-          <User size={24} strokeWidth={2.5} />
-        </button>
-
-        {isLoggedIn && (
+      {phase !== 'gauntlet-active' && (
+        <div className="fixed top-4 right-4 z-[100] flex flex-col gap-3 items-end">
           <button
-            onClick={() => setShowQuests(true)}
-            className="group bg-brutal-yellow border-2 border-black px-3 py-2 shadow-brutal hover:translate-y-0.5 hover:shadow-none transition-all flex items-center gap-2"
-            title="Daily Ritual"
+            onClick={() => setShowProfile(true)}
+            className="bg-white border-2 border-black p-2 shadow-brutal hover:translate-y-0.5 hover:shadow-none transition-all"
+            title="View Profile"
           >
-            <Flame size={20} className="text-brutal-red" />
-            <span className="font-black text-xs uppercase hidden group-hover:block">Daily Ritual</span>
+            <User size={24} strokeWidth={2.5} />
           </button>
-        )}
-      </div>
+
+          {isLoggedIn && (
+            <button
+              onClick={() => setShowQuests(true)}
+              className="group bg-brutal-yellow border-2 border-black px-3 py-2 shadow-brutal hover:translate-y-0.5 hover:shadow-none transition-all flex items-center gap-2"
+              title="Daily Ritual"
+            >
+              <Flame size={20} className="text-brutal-red" />
+              <span className="font-black text-xs uppercase hidden group-hover:block">Daily Ritual</span>
+            </button>
+          )}
+        </div>
+      )}
 
       <TodaysQuest isOpen={showQuests} onClose={() => setShowQuests(false)} />
 
