@@ -41,7 +41,7 @@ export function SwipeStack({ isTailoring }) {
                     {isTailoring ? "Initializing Tailoring..." : "Creating Assessment..."}
                 </h2>
                 <p className="font-mono text-sm text-gray-500">
-                    {isTailoring ? "Analyzing Blueprint Milestones" : `Analyzing "${activeSession?.goal || 'career path'}"`}
+                    {isTailoring ? "Analyzing Blueprint Milestones" : `Analyzing "${session?.goal || 'career path'}"`}
                 </p>
             </div>
         )
