@@ -22,6 +22,7 @@ import { ProfilePage } from './features/profile/ProfilePage';
 import { LoadingScreen } from './components/common/LoadingScreen';
 import { GauntletOverlay } from './features/gauntlet/GauntletOverlay';
 import { GauntletWorkspace } from './features/gauntlet/GauntletWorkspace';
+import { TodaysQuest } from './features/roadmap/TodaysQuest';
 
 function App() {
   // Destructure all necessary state and actions from your Zustand store
@@ -53,6 +54,7 @@ function App() {
   const phase = activeSession ? activeSession.phase : 'landing';
   const [showReplan, setShowReplan] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showQuests, setShowQuests] = useState(false);
   const [replanDays, setReplanDays] = useState(7);
   const [soundOn, setSoundOn] = useState(false);
 
@@ -289,13 +291,28 @@ function App() {
       )}
 
       {/* Profile Icon - Top Right Absolute */}
-      <button
-        onClick={() => setShowProfile(true)}
-        className="fixed top-4 right-4 z-[100] bg-white border-2 border-black p-2 shadow-brutal hover:translate-y-0.5 hover:shadow-none transition-all"
-        title="View Profile"
-      >
-        <User size={24} strokeWidth={2.5} />
-      </button>
+      <div className="fixed top-4 right-4 z-[100] flex flex-col gap-3 items-end">
+        <button
+          onClick={() => setShowProfile(true)}
+          className="bg-white border-2 border-black p-2 shadow-brutal hover:translate-y-0.5 hover:shadow-none transition-all"
+          title="View Profile"
+        >
+          <User size={24} strokeWidth={2.5} />
+        </button>
+
+        {isLoggedIn && (
+          <button
+            onClick={() => setShowQuests(true)}
+            className="group bg-brutal-yellow border-2 border-black px-3 py-2 shadow-brutal hover:translate-y-0.5 hover:shadow-none transition-all flex items-center gap-2"
+            title="Daily Ritual"
+          >
+            <Flame size={20} className="text-brutal-red" />
+            <span className="font-black text-xs uppercase hidden group-hover:block">Daily Ritual</span>
+          </button>
+        )}
+      </div>
+
+      <TodaysQuest isOpen={showQuests} onClose={() => setShowQuests(false)} />
 
       {/* Background Dot Pattern */}
       <div className="absolute inset-0 z-0 opacity-20 pointer-events-none"

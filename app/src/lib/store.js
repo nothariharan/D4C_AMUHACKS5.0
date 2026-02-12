@@ -436,9 +436,10 @@ export const useStore = create((set, get) => ({
         if (get().activeSessionId) get().publishBlueprint(get().activeSessionId);
     },
 
-    completeTask: (nodeId, subNodeId, taskIndex) => {
+    completeTask: (nodeId, subNodeId, taskIndex, sid = null) => {
         set((state) => {
-            const session = state.sessions[state.activeSessionId];
+            const targetSid = sid || state.activeSessionId;
+            const session = state.sessions[targetSid];
             if (!session || !session.roadmap) return {};
 
             let unlockNext = false;
@@ -468,8 +469,12 @@ export const useStore = create((set, get) => ({
                         unlockNext = true;
 
                         // CHECK FOR TOTAL ROADMAP COMPLETION
-                        const allNodesDone = newNodes.every(n => n.status === 'completed');
-                        if (allNodesDone) {
+                        // Check if all OTHER nodes are already completed
+                        const otherNodesDone = session.roadmap.nodes
+                            .filter(n => n.id !== nodeId)
+                            .every(n => n.status === 'completed');
+
+                        if (otherNodesDone) {
                             return {
                                 ...node,
                                 subNodes: newSubNodes,

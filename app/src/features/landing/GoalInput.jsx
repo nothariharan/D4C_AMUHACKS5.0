@@ -45,7 +45,7 @@ export function GoalInput({ onSubmit, disabled }) {
     }, [])
 
     return (
-        <div className="w-full max-w-4xl relative">
+        <div className="w-full max-w-6xl relative">
             <AnimatePresence mode="wait">
                 {step === 1 ? (
                     <motion.div
@@ -56,7 +56,7 @@ export function GoalInput({ onSubmit, disabled }) {
                         className="w-full"
                     >
                         <div className="brutal-border bg-white p-2 relative z-10 flex items-center shadow-brutal transition-transform focus-within:-translate-y-1 focus-within:shadow-[8px_8px_0px_0px_#000]">
-                            <span className="text-xl font-bold px-4 select-none shrink-0 border-r-3 border-black mr-4 py-2 bg-brutal-yellow">
+                            <span className="text-2xl font-black px-6 select-none shrink-0 border-r-3 border-black mr-4 py-2 bg-brutal-yellow">
                                 GOAL
                             </span>
                             <input
@@ -65,7 +65,7 @@ export function GoalInput({ onSubmit, disabled }) {
                                 onChange={(e) => setGoal(e.target.value)}
                                 onKeyDown={handleGoalKeyDown}
                                 placeholder="FULL STACK DEVELOPER..."
-                                className="w-full text-2xl font-bold outline-none font-mono bg-transparent placeholder:text-gray-300 uppercase"
+                                className="w-full text-3xl font-black outline-none font-mono bg-transparent placeholder:text-gray-300 uppercase"
                                 autoFocus
                             />
                             <button
@@ -85,7 +85,7 @@ export function GoalInput({ onSubmit, disabled }) {
                         className="w-full"
                     >
                         <div className="brutal-border bg-white p-2 relative z-10 flex items-center shadow-brutal transition-transform focus-within:-translate-y-1 focus-within:shadow-[8px_8px_0px_0px_#000]">
-                            <span className="text-xl font-bold px-4 select-none shrink-0 border-r-3 border-black mr-4 py-2 bg-brutal-red text-white">
+                            <span className="text-2xl font-black px-6 select-none shrink-0 border-r-3 border-black mr-4 py-2 bg-brutal-red text-white">
                                 DEADLINE
                             </span>
                             <input
@@ -94,7 +94,7 @@ export function GoalInput({ onSubmit, disabled }) {
                                 onChange={(e) => setDeadline(e.target.value)}
                                 onKeyDown={handleDeadlineKeyDown}
                                 placeholder="e.g. 3 MONTHS..."
-                                className="w-full text-2xl font-bold outline-none font-mono bg-transparent placeholder:text-gray-300 uppercase"
+                                className="w-full text-3xl font-black outline-none font-mono bg-transparent placeholder:text-gray-300 uppercase"
                                 autoFocus
                             />
                             <button
