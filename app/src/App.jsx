@@ -142,10 +142,6 @@ function App() {
         setSessions(loadedSessions); // Update Zustand store with loaded roadmaps (merges with local if any)
         setInitialLoadComplete(true); // Hydration done
 
-        if (firstSessionId) {
-          setActiveSessionId(firstSessionId); // Set the first loaded session as active
-        }
-
 
       } else {
         // User is signed out.
