@@ -44,6 +44,7 @@ export const useStore = create((set, get) => ({
     showExchange: false,    // Toggles the Blueprint Marketplace view
     showManifest: false,    // Toggles the Shipping Manifest view
     manifestData: null,     // Holds the AI-generated manifest
+    showQuests: false,      // Toggles the Daily Ritual / Quest panel
 
     isInitialLoadComplete: false, // Tracks if first Firestore hydration is done
 
@@ -72,6 +73,7 @@ export const useStore = create((set, get) => ({
         currentTaskIds: null,
         showManifest: false,
         manifestData: null,
+        showQuests: false,
     }),
 
     // Actions to populate state after fetching from Firestore (Read on Load/Login)
@@ -98,6 +100,7 @@ export const useStore = create((set, get) => ({
     })),
 
     setShowManifest: (show) => set({ showManifest: show }),
+    setShowQuests: (show) => set({ showQuests: show }),
 
     compileManifest: async () => {
         const state = get();

@@ -57,20 +57,21 @@ export function TodaysQuest({ isOpen, onClose }) {
 
         // Sort by ID to ensure order is stable before picking
         const pool = [...allAvailableQuests].sort((a, b) => a.id.localeCompare(b.id));
-
-        // Pick 5 based on seed
-        const selection = [];
         const poolSize = pool.length;
 
-        // If we have fewer than 5, take all. Otherwise, pick specific ones.
         if (poolSize <= 5) return pool;
 
-        for (let i = 0; i < 5; i++) {
-            const index = (seed + (i * 13)) % poolSize; // Offset each pick
-            selection.push(pool[index]);
-            // Note: In real production, we'd handle unique selection better, 
-            // but this is stable enough for now.
+        const selection = [];
+        const availableIndices = Array.from({ length: poolSize }, (_, i) => i);
+
+        // Pick 5 unique indices using the seed
+        for (let i = 0; i < 5 && availableIndices.length > 0; i++) {
+            // Use a larger prime multiplier (131) and include i to shift the pick
+            const pickIdx = (seed + i * 131) % availableIndices.length;
+            const poolIdx = availableIndices.splice(pickIdx, 1)[0];
+            selection.push(pool[poolIdx]);
         }
+
         return selection;
     }, [allAvailableQuests]);
 

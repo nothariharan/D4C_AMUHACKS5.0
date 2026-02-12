@@ -1,14 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
-import { Check, Lock, Play, Plus, Minus, Info, ClipboardList, MessageCircleQuestion, BookMarked, CalendarCheck } from 'lucide-react'
+import { Check, Lock, Play, Plus, Minus, Info, ClipboardList, MessageCircleQuestion, BookMarked, CalendarCheck, Share2 } from 'lucide-react'
 import { useStore } from '../../lib/store'
 import { TaskThreadView } from './TaskThreadView'
 import { NextUpPanel } from './NextUpPanel'
-import { TodaysQuest } from './TodaysQuest'
 
 export function MetroMap() {
-    const { sessions, activeSessionId, currentTaskIds, setCurrentTask, updateNodePosition, completeTask, publishBlueprint } = useStore()
+    const { sessions, activeSessionId, currentTaskIds, setCurrentTask, updateNodePosition, completeTask, publishBlueprint, setShowQuests } = useStore()
     const activeSession = sessions[activeSessionId]
     const roadmap = activeSession?.roadmap
 
@@ -39,7 +38,6 @@ export function MetroMap() {
     const [expandedNodes, setExpandedNodes] = useState({})
     const [expandedSubNodes, setExpandedSubNodes] = useState({})
     const [showFABMenu, setShowFABMenu] = useState(false)
-    const [showQuest, setShowQuest] = useState(false)
 
     // Derive selected task from store to ensure reactivity
     const selectedTask = currentTaskIds && roadmap ?
@@ -161,7 +159,7 @@ export function MetroMap() {
                                             className="flex flex-col items-end gap-2 mt-2"
                                         >
                                             {[
-                                                { icon: <CalendarCheck size={20} />, label: "Today's Quest", action: () => { setShowQuest(true); setShowFABMenu(false); } },
+                                                { icon: <CalendarCheck size={20} />, label: "Today's Quest", action: () => { setShowQuests(true); setShowFABMenu(false); } },
                                                 ...(!activeSession?.isStolen ? [{ icon: <Share2 size={20} />, label: isPublishing ? 'Uploading...' : 'Publish to Exchange', action: handlePublish }] : []),
                                                 { icon: <MessageCircleQuestion size={20} />, label: 'AI Explain', action: () => { } },
                                                 { icon: <BookMarked size={20} />, label: 'Review Later', action: () => { } },
@@ -364,8 +362,6 @@ export function MetroMap() {
                 )}
             </AnimatePresence>
 
-            {/* Today's Quest Panel */}
-            {showQuest && <TodaysQuest onClose={() => setShowQuest(false)} />}
 
             {/* Next Up Panel (Fixed Bottom Right) */}
             <NextUpPanel nodes={localNodes} onTaskClick={(ids) => setCurrentTask(ids)} />

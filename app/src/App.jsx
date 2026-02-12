@@ -47,6 +47,8 @@ function App() {
     setShowExchange,
     showManifest,
     setShowManifest,
+    showQuests,
+    setShowQuests,
     compileManifest
   } = useStore();
 
@@ -54,7 +56,6 @@ function App() {
   const phase = activeSession ? activeSession.phase : 'landing';
   const [showReplan, setShowReplan] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const [showQuests, setShowQuests] = useState(false);
   const [replanDays, setReplanDays] = useState(7);
   const [soundOn, setSoundOn] = useState(false);
 
