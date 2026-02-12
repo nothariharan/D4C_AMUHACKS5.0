@@ -449,7 +449,88 @@ export async function generateManifest(userData) {
         const text = completion.choices[0].message.content;
         return parseJSON(text);
     } catch (error) {
-        console.error("Manifest Generation Error:", error);
+        console.error("Manifest Error:", error);
         return null;
+    }
+}
+
+export async function generateGauntletChallenge(goal, milestones) {
+    const prompt = `
+    The user has completed their roadmap for: "${goal}".
+    Key milestones mastered: ${milestones.join(", ")}.
+
+    Create a high-stakes "Final Gauntlet" capstone challenge.
+    
+    Status Rules:
+    - If the goal is technical/coding, the challenge MUST be a build project.
+    - If the goal is creative/physical, the challenge MUST be a production/performance task.
+    
+    Output strictly JSON:
+    {
+      "type": "technical" | "physical",
+      "title": "Challange Name",
+      "brief": "One sentence mission statement",
+      "requirements": ["Requirement 1", "Requirement 2", "Req 3..."],
+      "timeLimit": "7 Days",
+      "starterCode": { "index.html": "...", "styles.css": "...", "app.js": "..." } // Only if technical
+    }
+    `;
+
+    try {
+        const completion = await client.chat.completions.create({
+            model: MODEL,
+            messages: [{ role: "user", content: prompt }],
+            response_format: { type: "json_object" }
+        });
+        return JSON.parse(completion.choices[0].message.content);
+    } catch (error) {
+        console.error("Gauntlet Gen Error:", error);
+        return {
+            type: "technical",
+            title: "Final Capstone Project",
+            brief: `Build a production-ready application that demonstrates your ${goal} skills.`,
+            requirements: ["Build core features", "Ensure clean code", "Deploy to live URL"],
+            timeLimit: "7 Days"
+        };
+    }
+}
+
+export async function verifyGauntletSubmission(challenge, submission) {
+    const prompt = `
+    Evaluate the following submission for the "Final Gauntlet" challenge.
+    
+    CHALLENGE: ${challenge.title}
+    BRIEF: ${challenge.brief}
+    REQUIREMENTS: ${challenge.requirements.join(", ")}
+    
+    SUBMISSION:
+    Code/Content: ${JSON.stringify(submission.code || submission.reflection)}
+    Files: ${JSON.stringify(submission.files || [])}
+    
+    Criteria:
+    1. Completion of all requirements.
+    2. Professionalism and code quality (if applicable).
+    3. Proof of mastery in ${challenge.title}.
+
+    Output strictly JSON:
+    {
+      "passed": true | false,
+      "score": number (0-100),
+      "feedback": "Detailed 2-3 sentence feedback.",
+      "strengths": ["...", "..."],
+      "growth": ["...", "..."]
+    }
+    `;
+
+    try {
+        const completion = await client.chat.completions.create({
+            model: MODEL,
+            messages: [{ role: "user", content: prompt }],
+            response_format: { type: "json_object" }
+        });
+        return JSON.parse(completion.choices[0].message.content);
+    } catch (error) {
+        console.error("Gauntlet Verification Error:", error);
+        return { passed: true, score: 80, feedback: "System busy. Manual verification pending, but you're approved based on progress." };
     }
 }

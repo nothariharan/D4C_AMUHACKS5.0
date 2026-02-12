@@ -466,6 +466,18 @@ export const useStore = create((set, get) => ({
 
                     if (isFullyCompleted) {
                         unlockNext = true;
+
+                        // CHECK FOR TOTAL ROADMAP COMPLETION
+                        const allNodesDone = newNodes.every(n => n.status === 'completed');
+                        if (allNodesDone) {
+                            return {
+                                ...node,
+                                subNodes: newSubNodes,
+                                status: 'completed',
+                                phase: 'gauntlet-reveal' // Trigger the Boss Fight!
+                            };
+                        }
+
                         return { ...node, subNodes: newSubNodes, status: 'completed' };
                     }
 
@@ -868,6 +880,98 @@ export const useStore = create((set, get) => ({
         }));
         get().syncToFirestore();
         get().publishBlueprint(sessionId); // Update shared version if tailored
+    },
+
+    generateGauntletChallenge: async (sessionId) => {
+        const state = get();
+        const session = state.sessions[sessionId];
+        if (!session) return;
+
+        const { generateGauntletChallenge } = await import('./gemini');
+        const milestoneTitles = (session.roadmap?.nodes || []).map(n => n.title);
+
+        const challenge = await generateGauntletChallenge(session.role || session.goal, milestoneTitles);
+
+        set(s => ({
+            sessions: {
+                ...s.sessions,
+                [sessionId]: {
+                    ...s.sessions[sessionId],
+                    gauntlet: {
+                        ...challenge,
+                        status: 'not_started',
+                        attempts: 0,
+                        submissions: []
+                    }
+                }
+            }
+        }));
+        get().syncToFirestore();
+    },
+
+    startGauntlet: (sessionId) => {
+        set(s => ({
+            sessions: {
+                ...s.sessions,
+                [sessionId]: {
+                    ...s.sessions[sessionId],
+                    phase: 'gauntlet-active',
+                    gauntlet: {
+                        ...s.sessions[sessionId].gauntlet,
+                        status: 'in_progress',
+                        startedAt: new Date().toISOString()
+                    }
+                }
+            }
+        }));
+        get().syncToFirestore();
+    },
+
+    submitGauntlet: async (sessionId, submissionData) => {
+        const state = get();
+        const session = state.sessions[sessionId];
+        if (!session || !session.gauntlet) return;
+
+        // Set local loading/pending state
+        set(s => ({
+            sessions: {
+                ...s.sessions,
+                [sessionId]: {
+                    ...s.sessions[sessionId],
+                    gauntlet: {
+                        ...s.sessions[sessionId].gauntlet,
+                        status: 'verifying'
+                    }
+                }
+            }
+        }));
+
+        const { verifyGauntletSubmission } = await import('./gemini');
+        const result = await verifyGauntletSubmission(session.gauntlet, submissionData);
+
+        set(s => ({
+            sessions: {
+                ...s.sessions,
+                [sessionId]: {
+                    ...s.sessions[sessionId],
+                    gauntlet: {
+                        ...s.sessions[sessionId].gauntlet,
+                        status: result.passed ? 'passed' : 'failed',
+                        attempts: (s.sessions[sessionId].gauntlet.attempts || 0) + 1,
+                        lastResult: result,
+                        submissions: [
+                            ...(s.sessions[sessionId].gauntlet.submissions || []),
+                            { ...submissionData, result, timestamp: new Date().toISOString() }
+                        ]
+                    },
+                    // Update main session status if passed
+                    status: result.passed ? 'mastered' : s.sessions[sessionId].status
+                }
+            }
+        }));
+
+        get().syncToFirestore();
+        return result;
     },
 
     createRoadmap: async (goal, deadline) => {

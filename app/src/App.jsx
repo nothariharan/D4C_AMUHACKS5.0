@@ -20,6 +20,8 @@ import { generateTailoringQuestions } from './lib/gemini';
 import { User, Zap, Flame, Clock, Timer, AlertTriangle, Volume2, VolumeX, Play, SkipForward, Terminal } from 'lucide-react';
 import { ProfilePage } from './features/profile/ProfilePage';
 import { LoadingScreen } from './components/common/LoadingScreen';
+import { GauntletOverlay } from './features/gauntlet/GauntletOverlay';
+import { GauntletWorkspace } from './features/gauntlet/GauntletWorkspace';
 
 function App() {
   // Destructure all necessary state and actions from your Zustand store
