@@ -2,16 +2,21 @@ import OpenAI from 'openai';
 
 const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 
-// Initialize OpenAI client pointing to OpenRouter
-const client = new OpenAI({
-    baseURL: 'https://openrouter.ai/api/v1',
-    apiKey: API_KEY,
-    dangerouslyAllowBrowser: true // Required for client-side usage through Vite
-});
+import { useStore } from './store';
 
-const MODEL = 'arcee-ai/trinity-large-preview:free'; // Using specialized model as requested by user
+const getClient = () => {
+    const apiKey = useStore.getState().apiKey;
+    if (!apiKey) throw new Error("API Key Missing");
 
-// Helper to robustly parse JSON from AI response
+    return new OpenAI({
+        baseURL: 'https://openrouter.ai/api/v1',
+        apiKey: apiKey,
+        dangerouslyAllowBrowser: true
+    });
+};
+
+const MODEL = 'arcee-ai/trinity-large-preview:free';
+
 function parseJSON(text) {
     try {
         // 1. Try naive parse
@@ -182,7 +187,8 @@ const MOCK_ROADMAP = {
 
 export async function parseCareerGoal(goal) {
     // TEST MODE TRIGGER
-    if (goal.toUpperCase() === 'TEST' || !API_KEY || API_KEY.includes('...')) {
+    const apiKey = useStore.getState().apiKey;
+    if (goal.toUpperCase() === 'TEST' || !apiKey || apiKey.includes('...')) {
         console.log("USING MOCK DATA (Test Mode)");
         return {
             isValid: true,
@@ -202,6 +208,7 @@ export async function parseCareerGoal(goal) {
   `;
 
     try {
+        const client = getClient();
         const completion = await client.chat.completions.create({
             model: MODEL,
             messages: [{ role: "user", content: prompt }]
@@ -220,7 +227,8 @@ export async function parseCareerGoal(goal) {
 }
 
 export async function generateQuestions(role) {
-    if (role === 'Test Career' || !API_KEY || API_KEY.includes('...')) {
+    const apiKey = useStore.getState().apiKey;
+    if (role === 'Test Career' || !apiKey || apiKey.includes('...')) {
         return [
             { id: 1, skill: 'Terminal', question: 'Do you know how to use "cd" and "ls" in the terminal?', context: 'Basic navigation is essential.' },
             { id: 2, skill: 'Git', question: 'Have you ever used "git commit" to save your work?', context: 'Version control saves lives.' },
@@ -251,6 +259,7 @@ export async function generateQuestions(role) {
   `;
 
     try {
+        const client = getClient();
         const completion = await client.chat.completions.create({
             model: MODEL,
             messages: [{ role: "user", content: prompt }]
@@ -286,6 +295,7 @@ export async function generateTailoringQuestions(goal, nodes) {
     `;
 
     try {
+        const client = getClient();
         const response = await client.chat.completions.create({
             model: MODEL,
             messages: [{ role: "user", content: prompt }],
@@ -306,7 +316,8 @@ export async function generateTailoringQuestions(goal, nodes) {
 }
 
 export async function generateRoadmap(role, knownSkills, gapSkills) {
-    if (role === 'Test Career' || !API_KEY || API_KEY.includes('...')) {
+    const apiKey = useStore.getState().apiKey;
+    if (role === 'Test Career' || !apiKey || apiKey.includes('...')) {
         return MOCK_ROADMAP;
     }
 
@@ -363,6 +374,7 @@ export async function generateRoadmap(role, knownSkills, gapSkills) {
   `;
 
     try {
+        const client = getClient();
         const completion = await client.chat.completions.create({
             model: MODEL,
             messages: [{ role: "user", content: prompt }]
@@ -377,7 +389,8 @@ export async function generateRoadmap(role, knownSkills, gapSkills) {
 }
 
 export async function generateManifest(userData) {
-    if (userData.isTest || !API_KEY || API_KEY.includes('...')) {
+    const apiKey = useStore.getState().apiKey;
+    if (userData.isTest || !apiKey || apiKey.includes('...')) {
         return {
             subject: userData.name || "Test Subject",
             status: {
@@ -441,6 +454,7 @@ export async function generateManifest(userData) {
   `;
 
     try {
+        const client = getClient();
         const completion = await client.chat.completions.create({
             model: MODEL,
             messages: [{ role: "user", content: prompt }]
@@ -461,22 +475,34 @@ export async function generateGauntletChallenge(goal, milestones) {
 
     Create a high-stakes "Final Gauntlet" capstone challenge.
     
-    Status Rules:
-    - If the goal is technical/coding, the challenge MUST be a build project.
-    - If the goal is creative/physical, the challenge MUST be a production/performance task.
-    
+    Determine the best 'Game Engine' for this goal from these options:
+    1. "coding_sandbox": For Engineering/Dev/Data roles. Build a real app.
+    2. "crisis_terminal": For Entrepreneurship/Management. Text-based survival scenario.
+    3. "hostile_negotiation": For Sales/Marketing/Soft Skills. Convince a skeptic.
+    4. "resource_squeeze": For Finance/Ops/Strategy. Budget allocation puzzle.
+    5. "red_pen_teardown": For Design/Content/Product. Fix a broken artifact.
+
     Output strictly JSON:
     {
-      "type": "technical" | "physical",
-      "title": "Challange Name",
+      "type": "coding_sandbox" | "crisis_terminal" | "hostile_negotiation" | "resource_squeeze" | "red_pen_teardown",
+      "title": "Challenge Name",
       "brief": "One sentence mission statement",
-      "requirements": ["Requirement 1", "Requirement 2", "Req 3..."],
-      "timeLimit": "7 Days",
-      "starterCode": { "index.html": "...", "styles.css": "...", "app.js": "..." } // Only if technical
+      "requirements": ["Requirement 1", "Req 2", "Req 3"],
+      "timeLimit": "5 Minutes" | "3 Days" | "7 Days",
+      "starterCode": { ... } // ONLY if type is coding_sandbox
+      "scenario": "..." // Narrative setup for crisis/negotiation/squeeze/red_pen
+      "initialState": { ... } // Specific data for the chosen engine (see below)
     }
+
+    Type-Specific Fields (add these to 'initialState'):
+    - crisis_terminal: { "currency": 10000, "morale": 100, "turns": 3 }
+    - hostile_negotiation: { "role": "Angry Client", "patience": 100, "topic": "Why is the project late?" }
+    - resource_squeeze: { "budget": 5000, "sliders": [{"label": "Ads", "cost": 10}, {"label": "Dev", "cost": 50}] }
+    - red_pen_teardown: { "content": "The bad copy/design text...", "flaws": ["Flaw 1", "Flaw 2"] }
     `;
 
     try {
+        const client = getClient();
         const completion = await client.chat.completions.create({
             model: MODEL,
             messages: [{ role: "user", content: prompt }],
@@ -485,8 +511,19 @@ export async function generateGauntletChallenge(goal, milestones) {
         return JSON.parse(completion.choices[0].message.content);
     } catch (error) {
         console.error("Gauntlet Gen Error:", error);
+        const isTech = /dev|engineer|code|program|web|react|node|python|stack/i.test(goal);
         return {
-            type: "technical",
+            type: isTech ? "coding_sandbox" : "coding_sandbox", // For now, default to coding as it's the safest 'hard' challenge, OR change to 'physical' if preferred. User said: "legacy -> submit proof is fine".
+            // Actually, let's follow the user's preference:
+            type: isTech ? "coding_sandbox" : "technical", // Wait, 'technical' isn't a valid engine anymore in the new list.
+            // Let's rely on the prompt mainly. But for fallback:
+            type: isTech ? "coding_sandbox" : "coding_sandbox", // Re-reading user: "if ... not falling under any ... the old one where its just submit proof is fine"
+            // But here we are generating a NEW challenge.
+            // If generation fails, we probably want a safe default. 
+            // Let's stick to the previous simple logic but maybe just use 'coding_sandbox' as a safe bet for hackathon demo stability?
+            // Actually, the user's request was about *existing* sessions.
+            // For *new* generations (which fallback covers), let's try to be smart.
+            type: isTech ? "coding_sandbox" : "physical",
             title: "Final Capstone Project",
             brief: `Build a production-ready application that demonstrates your ${goal} skills.`,
             requirements: ["Build core features", "Ensure clean code", "Deploy to live URL"],
@@ -523,6 +560,7 @@ export async function verifyGauntletSubmission(challenge, submission) {
     `;
 
     try {
+        const client = getClient();
         const completion = await client.chat.completions.create({
             model: MODEL,
             messages: [{ role: "user", content: prompt }],
@@ -532,5 +570,47 @@ export async function verifyGauntletSubmission(challenge, submission) {
     } catch (error) {
         console.error("Gauntlet Verification Error:", error);
         return { passed: true, score: 80, feedback: "System busy. Manual verification pending, but you're approved based on progress." };
+    }
+}
+
+
+// Explain a specific task concept (Mocked or Real)
+export async function explainConcept(task, messages, goal) {
+    const apiKey = useStore.getState().apiKey;
+    if (goal === 'Test Career' || !apiKey || apiKey.includes('...')) {
+        return "I can explain this concept! Since we are in test mode, imagine I just gave you a brilliant, concise explanation of **" + task.title + "** with a perfect code example.";
+    }
+
+    const prompt = `
+    You are an expert ${goal} mentor.
+    
+    The user is asking about a specific task: "${task.title}".
+    Context:
+    - Task Detail: ${task.detail}
+    - Task Breakdown: ${task.breakdown}
+    - Parent Goal: ${goal}
+    
+    Conversation History:
+    ${messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n')}
+    
+    Guidelines:
+    - Be concise, encouraging, and practical.
+    - Use analogies.
+    - If user asks for code, provide a short, clean snippet.
+    - If user seems stuck, suggest a small practice step.
+    
+    Respond in markdown.
+    `;
+
+    try {
+        const client = getClient();
+        const completion = await client.chat.completions.create({
+            model: MODEL,
+            messages: [{ role: "user", content: prompt }]
+        });
+        return completion.choices[0].message.content;
+    } catch (error) {
+        console.error("AI Explain Error:", error);
+        return "I'm having trouble connecting to the mentor network right now. Try again in a moment.";
     }
 }

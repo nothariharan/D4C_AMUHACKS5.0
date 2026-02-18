@@ -23,6 +23,7 @@ import { LoadingScreen } from './components/common/LoadingScreen';
 import { GauntletOverlay } from './features/gauntlet/GauntletOverlay';
 import { GauntletWorkspace } from './features/gauntlet/GauntletWorkspace';
 import { TodaysQuest } from './features/roadmap/TodaysQuest';
+import { ApiKeyModal } from './components/common/ApiKeyModal';
 
 function App() {
   // Destructure all necessary state and actions from your Zustand store
@@ -317,6 +318,7 @@ function App() {
       <AnimatePresence>
         {!isInitialLoadComplete && <LoadingScreen />}
       </AnimatePresence>
+      <ApiKeyModal />
       {phase !== 'gauntlet-active' && <Sidebar />}
       {/* AuthModal will appear based on engagementMetrics.showTrap state */}
       {engagementMetrics.showTrap && <AuthModal />}

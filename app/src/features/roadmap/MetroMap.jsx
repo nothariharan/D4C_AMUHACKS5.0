@@ -5,11 +5,15 @@ import { Check, Lock, Play, Plus, Minus, Info, ClipboardList, MessageCircleQuest
 import { useStore } from '../../lib/store'
 import { TaskThreadView } from './TaskThreadView'
 import { NextUpPanel } from './NextUpPanel'
+import AIExplainPanel from './AIExplainPanel'
 
 export function MetroMap() {
     const { sessions, activeSessionId, currentTaskIds, setCurrentTask, updateNodePosition, completeTask, publishBlueprint, setShowQuests, setPhase } = useStore()
     const activeSession = sessions[activeSessionId]
     const roadmap = activeSession?.roadmap
+
+    // AI Explain State
+    const [aiTask, setAiTask] = useState(null)
 
     const [isPublishing, setIsPublishing] = useState(false)
 
@@ -53,7 +57,6 @@ export function MetroMap() {
         subNodeId: currentTaskIds.subNodeId,
         taskIndex: currentTaskIds.taskIndex
     } : null
-
 
 
     // Refs for Auto-Zoom
@@ -106,10 +109,8 @@ export function MetroMap() {
     const allNodesDone = roadmap.nodes.every(n => n.status === 'completed');
 
     const toggleNode = (nodeId) => {
-        if (allNodesDone) {
-            setPhase(activeSessionId, 'gauntlet-reveal');
-            return;
-        }
+        // Allow interaction even if all nodes are done. 
+        // usage of setPhase(..., 'gauntlet-reveal') is now exclusively via the floating button.
         setExpandedNodes(prev => ({ ...prev, [nodeId]: !prev[nodeId] }))
     }
 
@@ -381,9 +382,18 @@ export function MetroMap() {
                             completeTask(taskToRender.nodeId, taskToRender.subNodeId, taskToRender.taskIndex);
                             setCurrentTask(null);
                         }}
+                        onAIExplain={() => setAiTask(taskToRender)}
                     />
                 )}
             </AnimatePresence>
+
+            {/* AI Explain Panel */}
+            <AIExplainPanel
+                task={aiTask}
+                isOpen={!!aiTask}
+                onClose={() => setAiTask(null)}
+                goal={activeSession?.role || activeSession?.goal}
+            />
 
 
             {/* Next Up Panel (Fixed Bottom Right) */}
@@ -479,6 +489,7 @@ function SubNode({ centerX, centerY, parentX, parentY, data, isExpanded, onClick
 function TaskNode({ centerX, centerY, parentX, parentY, data, onClick }) {
     const title = typeof data === 'string' ? data : data.title;
     const isCompleted = typeof data === 'object' && data.completed;
+    const isReviewLater = typeof data === 'object' && data.reviewLater;
 
     return (
         <motion.div
@@ -490,9 +501,11 @@ function TaskNode({ centerX, centerY, parentX, parentY, data, onClick }) {
             <div
                 onClick={(e) => { e.stopPropagation(); onClick(); }}
                 className={`absolute w-52 border-2 border-black flex items-center justify-center cursor-pointer shadow-[4px_4px_0px_0px_#000] hover:scale-110 transition-transform px-4 py-3 -translate-x-1/2 -translate-y-1/2 pointer-events-auto group
-                    ${isCompleted ? 'bg-brutal-green text-black' : 'bg-brutal-blue text-white'}
+                    ${isCompleted ? 'bg-brutal-green text-black' :
+                        isReviewLater ? 'bg-purple-500 text-white animate-pulse shadow-[0_0_15px_rgba(168,85,247,0.6)]' : 'bg-brutal-blue text-white'}
                 `}
             >
+                {isReviewLater && <span className="absolute -top-3 -right-3 text-xl filter drop-shadow-md">⭐</span>}
                 {isCompleted && <Check size={16} className="mr-1 flex-shrink-0" strokeWidth={3} />}
                 <span className="font-bold font-mono text-sm uppercase leading-tight text-center line-clamp-3 transition-transform group-hover:scale-110">
                     {title}

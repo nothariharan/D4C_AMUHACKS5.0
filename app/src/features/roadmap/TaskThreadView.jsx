@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useStore } from '../../lib/store'
-import { X, BookOpen, Code, Link as LinkIcon, CheckCircle, Trophy } from 'lucide-react'
+import { X, BookOpen, Code, Link as LinkIcon, CheckCircle, Trophy, MessageCircleQuestion, BookMarked } from 'lucide-react'
 
-export function TaskThreadView({ task, onClose, onComplete }) {
-    const { submitEvidence, completeTask } = useStore()
+export function TaskThreadView({ task, onClose, onComplete, onAIExplain }) {
+    const { submitEvidence, completeTask, toggleReviewLater } = useStore()
     const [activeTab, setActiveTab] = useState('breakdown')
     const [evidenceLink, setEvidenceLink] = useState('')
     const [evidenceNotes, setEvidenceNotes] = useState('')
@@ -66,17 +66,35 @@ export function TaskThreadView({ task, onClose, onComplete }) {
                     className="relative w-full max-w-4xl h-[80vh] bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] z-10 flex flex-col overflow-hidden"
                 >
                     {/* Header */}
+                    {/* Header */}
                     <div className="flex justify-between items-start p-6 border-b-4 border-black bg-gray-50">
-                        <div>
+                        <div className="flex-1 mr-4">
                             <h2 className="font-black text-3xl uppercase leading-none mb-2">{task.title}</h2>
                             <p className="font-mono text-gray-500 text-sm">{task.detail}</p>
                         </div>
-                        <button
-                            onClick={onClose}
-                            className="p-2 hover:bg-black hover:text-white transition-colors border-2 border-transparent hover:border-black rounded-full"
-                        >
-                            <X size={24} strokeWidth={3} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={onAIExplain}
+                                className="p-2 border-2 border-dashed border-black hover:bg-brutal-yellow hover:border-solid transition-all"
+                                title="Ask AI Mentor"
+                            >
+                                <MessageCircleQuestion size={24} />
+                            </button>
+                            <button
+                                onClick={() => toggleReviewLater(task.nodeId, task.subNodeId, task.taskIndex)}
+                                className={`p-2 border-2 border-black transition-all ${task.reviewLater ? 'bg-purple-500 text-white' : 'hover:bg-purple-200'}`}
+                                title="Review Later"
+                            >
+                                <BookMarked size={24} />
+                            </button>
+
+                            <button
+                                onClick={onClose}
+                                className="p-2 hover:bg-black hover:text-white transition-colors border-2 border-transparent hover:border-black rounded-full"
+                            >
+                                <X size={24} strokeWidth={3} />
+                            </button>
+                        </div>
                     </div>
 
                     {/* Content Layout */}

@@ -62,15 +62,7 @@ export function Sidebar() {
                 <Menu size={24} />
             </button>
 
-            {/* Roadmap Exchange Button - Right of Sidebar Button */}
-            <button
-                onClick={handleOpenExchange}
-                className={`fixed top-4 left-24 z-[100] px-6 py-3 border-4 border-black shadow-brutal hover:translate-y-1 hover:shadow-none transition-all flex items-center gap-3 font-black uppercase text-base tracking-tighter ${showExchange ? 'bg-brutal-yellow' : 'bg-white'}`}
-                title="Roadmap Exchange"
-            >
-                <Globe size={28} strokeWidth={3} />
-                <span className="hidden md:block">Roadmap Exchange</span>
-            </button>
+
 
             {/* Backdrop */}
             <AnimatePresence>
@@ -113,6 +105,62 @@ export function Sidebar() {
                                 <Plus size={20} strokeWidth={3} />
                                 LOAD NEW DISK
                             </motion.button>
+
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={handleOpenExchange}
+                                className={`w-full flex items-center justify-center gap-2 p-4 border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all font-black uppercase text-sm italic ${showExchange ? 'bg-brutal-yellow' : 'bg-white'}`}
+                            >
+                                <Globe size={20} strokeWidth={3} />
+                                ROADMAP EXCHANGE
+                            </motion.button>
+
+                            {/* Review Queue Widget */}
+                            {useStore.getState().reviewQueue?.length > 0 && (
+                                <div className="border-4 border-black bg-white shadow-[4px_4px_0px_0px_#000]">
+                                    <div className="bg-purple-600 text-white p-2 flex justify-between items-center border-b-4 border-black">
+                                        <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                                            <span>📌</span> Review Queue ({useStore.getState().reviewQueue.length})
+                                        </h3>
+                                    </div>
+                                    <div className="max-h-48 overflow-y-auto bg-purple-50">
+                                        {useStore.getState().reviewQueue.map((item) => (
+                                            <div key={item.id} className="p-3 border-b-2 border-black last:border-b-0 hover:bg-white transition-colors group">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div>
+                                                        <div className="font-bold text-xs leading-tight mb-1">{item.title}</div>
+                                                        <div className="text-[10px] text-gray-500 font-mono uppercase">{item.parentTitle}</div>
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            useStore.getState().toggleReviewLater(item.nodeId, item.subNodeId, item.taskIndex);
+                                                        }}
+                                                        className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        title="Remove from queue"
+                                                    >
+                                                        <X size={14} />
+                                                    </button>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        const { switchSession, setCurrentTask } = useStore.getState();
+                                                        switchSession(item.sessionId);
+                                                        // Close sidebar
+                                                        setIsOpen(false);
+                                                        // Open the task modal (if we are in the right session)
+                                                        setCurrentTask({ nodeId: item.nodeId, subNodeId: item.subNodeId, taskIndex: item.taskIndex });
+                                                    }}
+                                                    className="w-full text-[10px] font-black uppercase bg-purple-200 hover:bg-purple-300 py-1 border-2 border-black text-purple-900"
+                                                >
+                                                    Review Now
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="space-y-4">
                                 {sessionList.map(session => {

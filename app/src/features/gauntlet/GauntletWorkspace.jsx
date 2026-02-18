@@ -1,40 +1,121 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Code, FileText, Play, Send, CheckCircle,
-    XCircle, AlertTriangle, Lightbulb, Terminal,
-    FileCode, Layout, Save, Clock
+    Terminal, Clock, Send, XCircle, Trophy, AlertTriangle, Lightbulb,
+    Layout
 } from 'lucide-react';
-import Editor from '@monaco-editor/react';
 import { useStore } from '../../lib/store';
+import { CodingSandbox } from './CodingSandbox';
+import { CrisisTerminal } from './CrisisTerminal';
+import { HostileNegotiation } from './HostileNegotiation';
+import { ResourceSqueeze } from './ResourceSqueeze';
+import { RedPenTeardown } from './RedPenTeardown';
 
 export function GauntletWorkspace() {
     const { activeSessionId, sessions, submitGauntlet, dismissGauntlet } = useStore();
     const session = sessions[activeSessionId];
     const gauntlet = session?.gauntlet;
 
-    const [activeFile, setActiveFile] = useState('index.html');
-    const [files, setFiles] = useState(gauntlet?.starterCode || {
-        'index.html': '<!-- Build your project here -->\n<h1>Final Project</h1>',
-        'styles.css': '/* Style your project here */\nbody { background: #f0f0f0; }',
-        'app.js': '// Logic goes here\nconsole.log("Mission Start");'
-    });
+    // State for different engines
+    const [files, setFiles] = useState(gauntlet?.starterCode || {});
+
+    // Generic reflection state (fallback)
+    const [reflection, setReflection] = useState('');
 
     const [isVerifying, setIsVerifying] = useState(false);
     const [result, setResult] = useState(null);
-    const [reflection, setReflection] = useState('');
 
     if (!gauntlet) return null;
 
+    // Helper to determine engine even for legacy data
+    const getEffectiveType = () => {
+        // 1. Trust explicit valid types
+        const validTypes = ['coding_sandbox', 'crisis_terminal', 'hostile_negotiation', 'resource_squeeze', 'red_pen_teardown'];
+        if (gauntlet.type && validTypes.includes(gauntlet.type)) {
+            return gauntlet.type;
+        }
+
+        // 2. Handle legacy mappings
+        if (gauntlet.type === 'technical') return 'coding_sandbox';
+
+        // 3. Infer from Goal string if type is missing/unknown
+        const goal = session.goal || '';
+        const lowerGoal = goal.toLowerCase();
+        const codingKeywords = [
+            'developer', 'engineer', 'coding', 'programmer', 'software',
+            'react', 'web', 'app', 'python', 'java', 'node', 'stack', 'tech'
+        ];
+
+        if (codingKeywords.some(k => lowerGoal.includes(k))) {
+            return 'coding_sandbox';
+        }
+
+        // 4. Default fallback
+        return 'physical';
+    };
+
+    const effectiveType = getEffectiveType();
+
     const handleSubmit = async () => {
         setIsVerifying(true);
-        const submission = gauntlet.type === 'technical'
-            ? { code: files, type: 'technical' }
-            : { reflection, type: 'physical' };
+        let submission = {};
+
+        switch (effectiveType) {
+            case 'coding_sandbox':
+                submission = { code: files, type: 'technical' };
+                break;
+            case 'crisis_terminal':
+                submission = { type: 'crisis', result: 'Survived' }; // simplified for demo
+                break;
+            case 'hostile_negotiation':
+                submission = { type: 'negotiation', result: 'Won' };
+                break;
+            case 'resource_squeeze':
+                submission = { type: 'resource', result: 'Budget Balanced' };
+                break;
+            case 'red_pen_teardown':
+                submission = { type: 'red_pen', result: 'Fixed' };
+                break;
+            default:
+                submission = { reflection, type: 'physical' };
+        }
 
         const res = await submitGauntlet(activeSessionId, submission);
         setResult(res);
         setIsVerifying(false);
+    };
+
+    // Render the correct engine
+    const renderEngine = () => {
+        switch (effectiveType) {
+            case 'coding_sandbox':
+                return <CodingSandbox gauntlet={gauntlet} files={files} setFiles={setFiles} />;
+            case 'crisis_terminal':
+                return <CrisisTerminal gauntlet={gauntlet} />;
+            case 'hostile_negotiation':
+                return <HostileNegotiation gauntlet={gauntlet} />;
+            case 'resource_squeeze':
+                return <ResourceSqueeze gauntlet={gauntlet} />;
+            case 'red_pen_teardown':
+                return <RedPenTeardown gauntlet={gauntlet} />;
+            default:
+                // Fallback / Physical
+                return (
+                    <div className="flex-1 p-12 max-w-2xl mx-auto space-y-8">
+                        <h2 className="text-4xl font-black uppercase italic">Submit Your Proof</h2>
+                        <textarea
+                            value={reflection}
+                            onChange={(e) => setReflection(e.target.value)}
+                            placeholder="Detail your process, challenges, and breakthroughs..."
+                            className="w-full h-64 p-6 border-4 border-black font-mono text-lg focus:bg-brutal-yellow/10 focus:outline-none shadow-[8px_8px_0px_0px_#000]"
+                        />
+                        <div className="p-8 border-4 border-black border-dashed bg-gray-100 text-center cursor-pointer hover:bg-white transition-all">
+                            <Layout className="mx-auto mb-4 opacity-30" size={48} />
+                            <p className="font-black uppercase tracking-widest">DRAG IMAGES / VIDEOS HERE</p>
+                        </div>
+                    </div>
+                );
+        }
     };
 
     return (
@@ -45,26 +126,26 @@ export function GauntletWorkspace() {
                     <div className="bg-brutal-red p-1 rotate-12">
                         <Terminal size={20} strokeWidth={3} />
                     </div>
-                    <h2 className="text-xl font-black uppercase tracking-tighter">
-                        GAUNTLET_WORKSPACE // {gauntlet.title}
+                    <h2 className="text-xl font-black uppercase tracking-tighter hidden md:block">
+                        GAUNTLET // {gauntlet.title}
                     </h2>
                 </div>
 
-                {/* ESCAPE HATCH: Centered "NOT READY" Button */}
+                {/* ESCAPE HATCH */}
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                     <button
                         onClick={() => dismissGauntlet(activeSessionId)}
                         className="bg-brutal-red text-white px-8 py-3 border-4 border-black font-black uppercase text-xl hover:translate-y-1 hover:shadow-none transition-all shadow-[8px_8px_0px_0px_#000] flex items-center gap-3 group"
                     >
                         <XCircle size={24} className="group-hover:rotate-90 transition-transform" />
-                        NOT READY YET
+                        <span className="hidden md:inline">NOT READY</span>
                     </button>
                 </div>
 
                 <div className="flex items-center gap-6">
-                    <div className="hidden md:flex items-center gap-2 text-brutal-yellow">
+                    <div className="hidden lg:flex items-center gap-2 text-brutal-yellow">
                         <Clock size={18} />
-                        <span className="font-black underline uppercase text-xs">TIMER: {gauntlet.timeLimit} REMAINING</span>
+                        <span className="font-black underline uppercase text-xs">TIMER: {gauntlet.timeLimit}</span>
                     </div>
                     <button
                         onClick={handleSubmit}
@@ -72,14 +153,14 @@ export function GauntletWorkspace() {
                         className="bg-brutal-green text-black px-6 py-2 border-2 border-white font-black uppercase text-sm hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center gap-2"
                     >
                         {isVerifying ? <span className="animate-spin opacity-50">✦</span> : <Send size={16} strokeWidth={3} />}
-                        SUBMIT_FOR_REVIEW
+                        SUBMIT
                     </button>
                 </div>
             </div>
 
             <div className="flex flex-1 overflow-hidden">
-                {/* LEFT SIDEBAR: Instructions & Progress */}
-                <div className="w-80 border-r-4 border-black bg-gray-100 flex flex-col p-6 overflow-y-auto">
+                {/* LEFT SIDEBAR: Instructions (Common) */}
+                <div className="w-80 border-r-4 border-black bg-gray-100 flex flex-col p-6 overflow-y-auto hidden lg:flex">
                     <div className="space-y-6">
                         <div>
                             <h3 className="text-xs font-black uppercase text-gray-400 mb-2 tracking-widest">The Mission</h3>
@@ -87,7 +168,6 @@ export function GauntletWorkspace() {
                                 {gauntlet.brief}
                             </p>
                         </div>
-
                         <div>
                             <h3 className="text-xs font-black uppercase text-gray-400 mb-2 tracking-widest">Requirements</h3>
                             <div className="space-y-2">
@@ -99,7 +179,6 @@ export function GauntletWorkspace() {
                                 ))}
                             </div>
                         </div>
-
                         <div className="bg-brutal-blue/10 p-4 border-2 border-brutal-blue text-xs mt-auto">
                             <div className="flex items-center gap-2 text-brutal-blue font-black uppercase mb-1">
                                 <Lightbulb size={14} /> AI Hint Usage: 1/3
@@ -109,66 +188,13 @@ export function GauntletWorkspace() {
                     </div>
                 </div>
 
-                {/* MAIN AREA: IDE or Upload */}
-                <div className="flex-1 flex flex-col bg-gray-50 relative">
-                    {gauntlet.type === 'technical' ? (
-                        <>
-                            {/* File Tabs */}
-                            <div className="flex bg-gray-200 border-b-4 border-black">
-                                {Object.keys(files).map(fileName => (
-                                    <button
-                                        key={fileName}
-                                        onClick={() => setActiveFile(fileName)}
-                                        className={`px-6 py-3 border-r-2 border-black font-black text-xs uppercase transition-all
-                                            ${activeFile === fileName ? 'bg-white translate-y-[2px]' : 'bg-transparent text-gray-500 hover:bg-white'}
-                                        `}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <FileCode size={14} /> {fileName}
-                                        </div>
-                                    </button>
-                                ))}
-                                <div className="ml-auto p-3 text-[10px] text-gray-400 italic">AUTO-SAVING TO CLOUD...</div>
-                            </div>
-
-                            {/* Editor */}
-                            <div className="flex-1 border-b-4 border-black shadow-inner">
-                                <Editor
-                                    height="100%"
-                                    theme="vs-dark"
-                                    path={activeFile}
-                                    defaultLanguage={activeFile.endsWith('.html') ? 'html' : activeFile.endsWith('.css') ? 'css' : 'javascript'}
-                                    value={files[activeFile]}
-                                    onChange={(val) => setFiles(prev => ({ ...prev, [activeFile]: val }))}
-                                    options={{
-                                        fontSize: 16,
-                                        fontFamily: "'JetBrains Mono', monospace",
-                                        minimap: { enabled: false },
-                                        padding: { top: 20 }
-                                    }}
-                                />
-                            </div>
-                        </>
-                    ) : (
-                        <div className="flex-1 p-12 max-w-2xl mx-auto space-y-8">
-                            <h2 className="text-4xl font-black uppercase italic">Submit Your Proof</h2>
-                            <textarea
-                                value={reflection}
-                                onChange={(e) => setReflection(e.target.value)}
-                                placeholder="Detail your process, challenges, and breakthroughs..."
-                                className="w-full h-64 p-6 border-4 border-black font-mono text-lg focus:bg-brutal-yellow/10 focus:outline-none shadow-[8px_8px_0px_0px_#000]"
-                            />
-                            <div className="p-8 border-4 border-black border-dashed bg-gray-100 text-center cursor-pointer hover:bg-white transition-all">
-                                <Layout className="mx-auto mb-4 opacity-30" size={48} />
-                                <p className="font-black uppercase tracking-widest">DRAG IMAGES / VIDEOS HERE</p>
-                                <p className="text-xs text-gray-400 mt-2 italic">(Simulated for this implementation)</p>
-                            </div>
-                        </div>
-                    )}
+                {/* MAIN AREA: Engine Specific */}
+                <div className="flex-1 flex flex-col bg-gray-50 relative overflow-hidden">
+                    {renderEngine()}
                 </div>
             </div>
 
-            {/* RESULTS OVERLAY */}
+            {/* RESULTS OVERLAY (Common) */}
             <AnimatePresence>
                 {result && (
                     <motion.div

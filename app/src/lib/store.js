@@ -25,6 +25,7 @@ export const useStore = create((set, get) => ({
     // User Authentication State (managed by Firebase onAuthStateChanged in App.jsx)
     user: null,         // { uid, email, displayName, photoURL } - Firebase Auth User data
     isLoggedIn: false,  // Replaces previous 'isAuthenticated'
+    apiKey: localStorage.getItem('openrouter_api_key') || import.meta.env.VITE_OPENROUTER_API_KEY || '', // Initialize from local storage or env
 
 
     // Engagement Metrics (will be synced with users/{uid} document in Firestore)
@@ -45,6 +46,7 @@ export const useStore = create((set, get) => ({
     showManifest: false,    // Toggles the Shipping Manifest view
     manifestData: null,     // Holds the AI-generated manifest
     showQuests: false,      // Toggles the Daily Ritual / Quest panel
+    reviewQueue: [],        // List of flagged tasks for later review { nodeId, subNodeId, taskIndex, flaggedAt, title, parentTitle }
 
     isInitialLoadComplete: false, // Tracks if first Firestore hydration is done
 
@@ -55,6 +57,12 @@ export const useStore = create((set, get) => ({
 
     // Action to set user data from Firebase Auth (called by App.jsx's onAuthStateChanged)
     setUser: (userData) => set({ user: userData, isLoggedIn: true }),
+
+    // Action to set API Key
+    setApiKey: (key) => {
+        localStorage.setItem('openrouter_api_key', key);
+        set({ apiKey: key });
+    },
 
     // Action to clear user data on logout (called by App.jsx's onAuthStateChanged)
     logoutUser: () => set({
@@ -596,6 +604,71 @@ export const useStore = create((set, get) => ({
             };
         });
         get().syncToFirestore(); // Sync after logging time
+    },
+
+    toggleReviewLater: (nodeId, subNodeId, taskIndex) => {
+        set((state) => {
+            const session = state.sessions[state.activeSessionId];
+            if (!session || !session.roadmap) return {};
+
+            // 1. Find the task
+            const node = session.roadmap.nodes.find(n => n.id === nodeId);
+            const subNode = node?.subNodes?.find(s => s.id === subNodeId);
+            const task = subNode?.tasks?.[taskIndex];
+
+            if (!task) return {};
+
+            const taskObj = typeof task === 'string' ? { title: task } : task;
+            const isFlagged = !taskObj.reviewLater; // Toggle
+
+            // 2. Update task in session
+            const newNodes = session.roadmap.nodes.map(n => {
+                if (n.id !== nodeId) return n;
+                return {
+                    ...n,
+                    subNodes: n.subNodes.map(s => {
+                        if (s.id !== subNodeId) return s;
+                        const newTasks = [...s.tasks];
+                        const t = newTasks[taskIndex];
+                        const tUpdated = typeof t === 'string' ? { title: t } : { ...t };
+                        tUpdated.reviewLater = isFlagged;
+                        tUpdated.flaggedAt = isFlagged ? new Date().toISOString() : null;
+                        newTasks[taskIndex] = tUpdated;
+                        return { ...s, tasks: newTasks };
+                    })
+                };
+            });
+
+            // 3. Update Review Queue (Global list for sidebar)
+            let newQueue = [...state.reviewQueue];
+            const queueId = `${state.activeSessionId}-${nodeId}-${subNodeId}-${taskIndex}`;
+
+            if (isFlagged) {
+                newQueue.push({
+                    id: queueId,
+                    sessionId: state.activeSessionId,
+                    nodeId, subNodeId, taskIndex,
+                    title: taskObj.title,
+                    parentTitle: node.title,
+                    subTitle: subNode.title,
+                    flaggedAt: new Date().toISOString()
+                });
+            } else {
+                newQueue = newQueue.filter(q => q.id !== queueId);
+            }
+
+            return {
+                sessions: {
+                    ...state.sessions,
+                    [state.activeSessionId]: {
+                        ...session,
+                        roadmap: { ...session.roadmap, nodes: newNodes }
+                    }
+                },
+                reviewQueue: newQueue
+            };
+        });
+        get().syncToFirestore();
     },
 
     deleteSession: async (id) => {
