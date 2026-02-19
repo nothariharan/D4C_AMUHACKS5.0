@@ -180,6 +180,14 @@ export const ApiKeyModal = () => {
                             </button>
                         </form>
 
+                        {selectedProvider === 'gemini' && (
+                            <div className="mt-4 p-3 bg-red-50 border-l-4 border-red-500 text-xs text-red-700">
+                                <strong>Important CORS Warning:</strong> Google's direct API often blocks requests from deployed websites (Vercel, etc.) due to CORS headers.
+                                <br /><br />
+                                If you see connection errors, please select <strong>OpenRouter</strong> above and use a Gemini model through them (it acts as a secure proxy).
+                            </div>
+                        )}
+
                         <div className="mt-6 p-3 bg-gray-50 border-l-4 border-black text-xs font-mono text-gray-500">
                             <strong>Security Note:</strong> Your API key is stored <u>locally on your device</u> via LocalStorage. It is never sent to our servers, only directly to the AI provider you choose.
                         </div>
