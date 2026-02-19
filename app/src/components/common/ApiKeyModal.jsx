@@ -1,25 +1,74 @@
 import React, { useState } from 'react';
 import { useStore } from '../../lib/store';
-import { Key, CheckCircle, AlertCircle } from 'lucide-react';
+import { Key, CheckCircle, AlertCircle, Server, Globe, Box, PlayCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const PROVIDERS = [
+    { id: 'openrouter', name: 'OpenRouter', icon: Globe, defaultBase: 'https://openrouter.ai/api/v1' },
+    { id: 'openai', name: 'OpenAI', icon: Box, defaultBase: 'https://api.openai.com/v1' },
+    { id: 'gemini', name: 'Google Gemini', icon: Box, defaultBase: 'https://generativelanguage.googleapis.com/v1beta/openai/' },
+    { id: 'custom', name: 'Custom (Local/Other)', icon: Server, defaultBase: 'http://localhost:11434/v1' }
+];
+
 export const ApiKeyModal = () => {
-    const { apiKey, setApiKey } = useStore();
-    const [inputKey, setInputKey] = useState('');
+    const { apiConfig, setApiConfig, demoMode, setDemoMode, isApiKeyModalOpen, setApiKeyModalOpen } = useStore();
+    const [selectedProvider, setSelectedProvider] = useState(apiConfig?.provider || 'openrouter');
+    const [apiKey, setApiKey] = useState(apiConfig?.apiKey || '');
+    const [baseUrl, setBaseUrl] = useState(apiConfig?.baseUrl || 'https://openrouter.ai/api/v1');
+    const [model, setModel] = useState(apiConfig?.model || 'arcee-ai/trinity-large-preview:free');
+
+    // For local validation state
     const [error, setError] = useState('');
 
-    // If we already have a key (and it's not the dummy placeholder from env if any), don't show.
-    // We check length > 10 as a basic sanity check
-    if (apiKey && apiKey.length > 20) return null;
+    // Controlled by store state now
+    if (!isApiKeyModalOpen) return null;
+
+    const handleClose = () => {
+        setApiKeyModalOpen(false);
+    };
+
+    const handleProviderChange = (providerId) => {
+        setSelectedProvider(providerId);
+        const provider = PROVIDERS.find(p => p.id === providerId);
+        if (provider) {
+            setBaseUrl(provider.defaultBase);
+            // Reset model default based on provider?
+            if (providerId === 'openai') setModel('gpt-4o-mini');
+            if (providerId === 'openrouter') setModel('arcee-ai/trinity-large-preview:free');
+            if (providerId === 'gemini') setModel('gemini-1.5-flash');
+            if (providerId === 'custom') setModel('llama3');
+        }
+    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!inputKey.trim().startsWith('sk-or-')) {
-            setError('Invalid Key format. Should start with "sk-or-"');
+        setError('');
+
+        if (selectedProvider === 'openrouter' && !apiKey.startsWith('sk-or-')) {
+            setError('OpenRouter keys usually start with "sk-or-"');
             return;
         }
-        setApiKey(inputKey.trim());
+
+        if (selectedProvider === 'openai' && !apiKey.startsWith('sk-')) {
+            setError('OpenAI keys usually start with "sk-"');
+            return;
+        }
+
+        setApiConfig({
+            provider: selectedProvider,
+            apiKey: apiKey.trim(),
+            baseUrl: baseUrl.trim(),
+            model: model.trim()
+        });
+        setApiKeyModalOpen(false);
     };
+
+    const handleDemoMode = () => {
+        setDemoMode(true);
+        setApiKeyModalOpen(false);
+    };
+
+    const activeProvider = PROVIDERS.find(p => p.id === selectedProvider);
 
     return (
         <AnimatePresence>
@@ -27,60 +76,121 @@ export const ApiKeyModal = () => {
                 <motion.div
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] max-w-lg w-full p-8"
+                    className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] max-w-2xl w-full flex flex-col md:flex-row overflow-hidden"
                 >
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="bg-brutal-yellow p-3 border-2 border-black shadow-brutal">
-                            <Key size={32} strokeWidth={2.5} />
+                    {/* Sidebar Provider Selection */}
+                    <div className="w-full md:w-1/3 bg-gray-50 border-b-4 md:border-b-0 md:border-r-4 border-black p-4 flex flex-col gap-2">
+                        <div className="font-black uppercase text-xs text-gray-400 mb-2 tracking-widest">Select Provider</div>
+
+                        {PROVIDERS.map(p => (
+                            <button
+                                key={p.id}
+                                onClick={() => handleProviderChange(p.id)}
+                                className={`flex items-center gap-3 p-3 text-left border-2 transition-all font-bold uppercase text-xs
+                                    ${selectedProvider === p.id
+                                        ? 'bg-black text-white border-black shadow-[2px_2px_0px_0px_#888]'
+                                        : 'bg-white text-gray-500 border-transparent hover:border-black hover:bg-gray-100'
+                                    }
+                                `}
+                            >
+                                <p.icon size={16} />
+                                {p.name}
+                            </button>
+                        ))}
+
+                        <div className="mt-auto pt-4 border-t-2 border-dashed border-gray-300">
+                            <button
+                                onClick={handleDemoMode}
+                                className="w-full flex items-center gap-3 p-3 text-left border-2 border-black bg-brutal-yellow text-black font-bold uppercase text-xs hover:translate-x-1 hover:shadow-brutal transition-all"
+                            >
+                                <PlayCircle size={16} />
+                                Demo / Guest Mode
+                            </button>
+                            <p className="text-[10px] text-gray-500 mt-2 leading-tight">
+                                Use mock data to explore features without an API key.
+                            </p>
                         </div>
-                        <h2 className="text-3xl font-black uppercase">Access Required</h2>
                     </div>
 
-                    <p className="font-mono text-sm mb-6 text-gray-700">
-                        <strong>JustAsk</strong> requires an OpenRouter API key to power its AI mentorship features.
-                        Your key is stored locally in your browser and never sent to our servers.
-                    </p>
+                    {/* Main Form Area */}
+                    <div className="w-full md:w-2/3 p-8">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="bg-black text-white p-2">
+                                {activeProvider && <activeProvider.icon size={24} />}
+                            </div>
+                            <h2 className="text-2xl font-black uppercase">One Last Thing...</h2>
+                        </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label className="block font-black uppercase text-sm mb-2">OpenRouter API Key</label>
-                            <input
-                                type="password"
-                                value={inputKey}
-                                onChange={(e) => {
-                                    setInputKey(e.target.value);
-                                    setError('');
-                                }}
-                                placeholder="sk-or-v1-..."
-                                className="w-full bg-gray-100 border-2 border-black p-4 font-mono text-sm focus:outline-none focus:bg-white focus:shadow-[4px_4px_0px_0px_#000] transition-all"
-                            />
+                        <p className="font-mono text-sm mb-6 text-gray-600">
+                            We need one more Key to move forward to your goal. Configure your bridge to the AI network below.
+                        </p>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+
+                            {/* Base URL (Hidden for OpenRouter/OpenAI unless simplified?) -> actually useful to show for custom */}
+                            {selectedProvider === 'custom' && (
+                                <div>
+                                    <label className="block font-black uppercase text-[10px] mb-1">Base URL</label>
+                                    <input
+                                        type="text"
+                                        value={baseUrl}
+                                        onChange={e => setBaseUrl(e.target.value)}
+                                        className="w-full bg-gray-100 border-2 border-black p-2 font-mono text-sm focus:outline-none focus:bg-white transition-all"
+                                        placeholder="http://localhost:11434/v1"
+                                    />
+                                </div>
+                            )}
+
+                            {/* API Key */}
+                            <div>
+                                <label className="block font-black uppercase text-[10px] mb-1">API Key</label>
+                                <input
+                                    type="password"
+                                    value={apiKey}
+                                    onChange={e => { setApiKey(e.target.value); setError(''); }}
+                                    className="w-full bg-gray-100 border-2 border-black p-3 font-mono text-sm focus:outline-none focus:bg-white focus:shadow-[4px_4px_0px_0px_#000] transition-all"
+                                    placeholder={selectedProvider === 'openrouter' ? 'sk-or-...' : 'sk-...'}
+                                />
+                            </div>
+
+                            {/* Model selection (Simplification: Text input for now) */}
+                            <div>
+                                <label className="block font-black uppercase text-[10px] mb-1">Model ID</label>
+                                <input
+                                    type="text"
+                                    value={model}
+                                    onChange={e => setModel(e.target.value)}
+                                    className="w-full bg-gray-100 border-2 border-black p-2 font-mono text-sm focus:outline-none focus:bg-white transition-all"
+                                    placeholder="gpt-4, claude-3, etc."
+                                />
+                            </div>
+
                             {error && (
                                 <div className="flex items-center gap-2 text-brutal-red font-bold text-xs mt-2">
                                     <AlertCircle size={14} /> {error}
                                 </div>
                             )}
-                        </div>
 
-                        <div className="flex gap-3 pt-4">
                             <button
                                 type="submit"
-                                disabled={!inputKey}
-                                className="flex-1 bg-black text-white py-4 border-2 border-transparent font-black uppercase tracking-wider hover:bg-brutal-green hover:text-black hover:border-black hover:shadow-brutal transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={!apiKey && selectedProvider !== 'custom'} // specific logic
+                                className="w-full bg-black text-white py-4 mt-4 border-2 border-transparent font-black uppercase tracking-wider hover:bg-brutal-green hover:text-black hover:border-black hover:shadow-brutal transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Initialize System
+                                Connect System
                             </button>
-                        </div>
-                    </form>
+                        </form>
 
-                    <div className="mt-6 pt-6 border-t-2 border-dashed border-gray-300 text-center">
-                        <a
-                            href="https://openrouter.ai/keys"
-                            target="_blank"
-                            rel="noreferrer"
-                            className="font-mono text-xs text-gray-500 hover:text-black underline"
-                        >
-                            Get a free key from OpenRouter.ai &rarr;
-                        </a>
+                        <div className="mt-6 p-3 bg-gray-50 border-l-4 border-black text-xs font-mono text-gray-500">
+                            <strong>Security Note:</strong> Your API key is stored <u>locally on your device</u> via LocalStorage. It is never sent to our servers, only directly to the AI provider you choose.
+                        </div>
+
+                        {selectedProvider === 'openrouter' && (
+                            <div className="mt-4 text-center">
+                                <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer" className="font-mono text-xs text-gray-400 hover:text-black underline">
+                                    Get a free key from OpenRouter.ai &rarr;
+                                </a>
+                            </div>
+                        )}
                     </div>
                 </motion.div>
             </div>

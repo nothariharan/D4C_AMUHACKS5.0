@@ -1,21 +1,26 @@
 import OpenAI from 'openai';
 
-const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
+// Removed const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 
 import { useStore } from './store';
 
 const getClient = () => {
-    const apiKey = useStore.getState().apiKey;
-    if (!apiKey) throw new Error("API Key Missing");
+    const { apiConfig } = useStore.getState();
+    if (!apiConfig?.apiKey) throw new Error("API Key Missing");
 
     return new OpenAI({
-        baseURL: 'https://openrouter.ai/api/v1',
-        apiKey: apiKey,
+        baseURL: apiConfig.baseUrl || 'https://openrouter.ai/api/v1',
+        apiKey: apiConfig.apiKey,
         dangerouslyAllowBrowser: true
     });
 };
 
-const MODEL = 'arcee-ai/trinity-large-preview:free';
+// Default model fallback
+const DEFAULT_MODEL = 'arcee-ai/trinity-large-preview:free';
+
+const getModel = () => {
+    return useStore.getState().apiConfig?.model || DEFAULT_MODEL;
+};
 
 function parseJSON(text) {
     try {
@@ -187,12 +192,15 @@ const MOCK_ROADMAP = {
 
 export async function parseCareerGoal(goal) {
     // TEST MODE TRIGGER
-    const apiKey = useStore.getState().apiKey;
-    if (goal.toUpperCase() === 'TEST' || !apiKey || apiKey.includes('...')) {
-        console.log("USING MOCK DATA (Test Mode)");
+    // TEST MODE OR DEMO MODE TRIGGER
+    const { apiConfig, demoMode } = useStore.getState();
+    const isMock = goal.toUpperCase() === 'TEST' || demoMode || !apiConfig?.apiKey || apiConfig.apiKey.includes('...');
+
+    if (isMock) {
+        console.log("USING MOCK DATA (Demo/Test Mode)");
         return {
             isValid: true,
-            role: "Test Career",
+            role: "Demo Career",
             foundations: ["Mock Skill 1", "Mock Skill 2", "Mock Skill 3"]
         };
     }
@@ -210,7 +218,7 @@ export async function parseCareerGoal(goal) {
     try {
         const client = getClient();
         const completion = await client.chat.completions.create({
-            model: MODEL,
+            model: getModel(),
             messages: [{ role: "user", content: prompt }]
         });
 
@@ -227,8 +235,10 @@ export async function parseCareerGoal(goal) {
 }
 
 export async function generateQuestions(role) {
-    const apiKey = useStore.getState().apiKey;
-    if (role === 'Test Career' || !apiKey || apiKey.includes('...')) {
+    const { apiConfig, demoMode } = useStore.getState();
+    const isMock = role === 'Test Career' || role === 'Demo Career' || demoMode || !apiConfig?.apiKey || apiConfig.apiKey.includes('...');
+
+    if (isMock) {
         return [
             { id: 1, skill: 'Terminal', question: 'Do you know how to use "cd" and "ls" in the terminal?', context: 'Basic navigation is essential.' },
             { id: 2, skill: 'Git', question: 'Have you ever used "git commit" to save your work?', context: 'Version control saves lives.' },
@@ -261,7 +271,7 @@ export async function generateQuestions(role) {
     try {
         const client = getClient();
         const completion = await client.chat.completions.create({
-            model: MODEL,
+            model: getModel(),
             messages: [{ role: "user", content: prompt }]
         });
 
@@ -277,6 +287,18 @@ export async function generateQuestions(role) {
  * Generates 5 tailoring questions for a forked (stolen) roadmap.
  */
 export async function generateTailoringQuestions(goal, nodes) {
+    const { apiConfig, demoMode } = useStore.getState();
+    const isMock = goal.toUpperCase() === 'TEST' || demoMode || !apiConfig?.apiKey || apiConfig.apiKey.includes('...');
+
+    if (isMock) {
+        return (nodes || []).slice(0, 5).map((n, i) => ({
+            id: `tailor-${i}`,
+            skill: n.title,
+            question: `How much experience do you already have with ${n.title}?`,
+            context: "We'll skip or shorten this phase if you're already an expert."
+        }));
+    }
+
     const nodeTitles = nodes.map(n => n.title).join(", ");
     const prompt = `
     The user is "stealing" a roadmap for: "${goal}".
@@ -297,7 +319,7 @@ export async function generateTailoringQuestions(goal, nodes) {
     try {
         const client = getClient();
         const response = await client.chat.completions.create({
-            model: MODEL,
+            model: getModel(),
             messages: [{ role: "user", content: prompt }],
             response_format: { type: "json_object" }
         });
@@ -316,8 +338,10 @@ export async function generateTailoringQuestions(goal, nodes) {
 }
 
 export async function generateRoadmap(role, knownSkills, gapSkills) {
-    const apiKey = useStore.getState().apiKey;
-    if (role === 'Test Career' || !apiKey || apiKey.includes('...')) {
+    const { apiConfig, demoMode } = useStore.getState();
+    const isMock = role === 'Test Career' || role === 'Demo Career' || demoMode || !apiConfig?.apiKey || apiConfig.apiKey.includes('...');
+
+    if (isMock) {
         return MOCK_ROADMAP;
     }
 
@@ -376,7 +400,7 @@ export async function generateRoadmap(role, knownSkills, gapSkills) {
     try {
         const client = getClient();
         const completion = await client.chat.completions.create({
-            model: MODEL,
+            model: getModel(),
             messages: [{ role: "user", content: prompt }]
         });
 
@@ -389,8 +413,10 @@ export async function generateRoadmap(role, knownSkills, gapSkills) {
 }
 
 export async function generateManifest(userData) {
-    const apiKey = useStore.getState().apiKey;
-    if (userData.isTest || !apiKey || apiKey.includes('...')) {
+    const { apiConfig, demoMode } = useStore.getState();
+    const isMock = userData.isTest || demoMode || !apiConfig?.apiKey || apiConfig.apiKey.includes('...');
+
+    if (isMock) {
         return {
             subject: userData.name || "Test Subject",
             status: {
@@ -469,6 +495,20 @@ export async function generateManifest(userData) {
 }
 
 export async function generateGauntletChallenge(goal, milestones) {
+    const { apiConfig, demoMode } = useStore.getState();
+    const isMock = demoMode || !apiConfig?.apiKey || apiConfig.apiKey.includes('...');
+
+    if (isMock) {
+        return {
+            type: "coding_sandbox",
+            title: "Final Capstone Project (Demo)",
+            brief: `Build a production-ready application that demonstrates your ${goal} skills.`,
+            requirements: ["Build core features", "Ensure clean code", "Deploy to live URL"],
+            timeLimit: "7 Days",
+            scenario: "You are the lead developer for a startup. You need to clear the backlog before the big launch.",
+            initialState: { code: "// Start coding here..." }
+        };
+    }
     const prompt = `
     The user has completed their roadmap for: "${goal}".
     Key milestones mastered: ${milestones.join(", ")}.
@@ -504,7 +544,7 @@ export async function generateGauntletChallenge(goal, milestones) {
     try {
         const client = getClient();
         const completion = await client.chat.completions.create({
-            model: MODEL,
+            model: getModel(),
             messages: [{ role: "user", content: prompt }],
             response_format: { type: "json_object" }
         });
@@ -533,6 +573,18 @@ export async function generateGauntletChallenge(goal, milestones) {
 }
 
 export async function verifyGauntletSubmission(challenge, submission) {
+    const { apiConfig, demoMode } = useStore.getState();
+    const isMock = demoMode || !apiConfig?.apiKey || apiConfig.apiKey.includes('...');
+
+    if (isMock) {
+        return {
+            passed: true,
+            score: 95,
+            feedback: "Great job! This is a mock verification in Demo Mode.",
+            strengths: ["Consistency", "Speed"],
+            growth: ["UI Polish"]
+        };
+    }
     const prompt = `
     Evaluate the following submission for the "Final Gauntlet" challenge.
     
@@ -562,7 +614,7 @@ export async function verifyGauntletSubmission(challenge, submission) {
     try {
         const client = getClient();
         const completion = await client.chat.completions.create({
-            model: MODEL,
+            model: getModel(),
             messages: [{ role: "user", content: prompt }],
             response_format: { type: "json_object" }
         });
@@ -576,9 +628,11 @@ export async function verifyGauntletSubmission(challenge, submission) {
 
 // Explain a specific task concept (Mocked or Real)
 export async function explainConcept(task, messages, goal) {
-    const apiKey = useStore.getState().apiKey;
-    if (goal === 'Test Career' || !apiKey || apiKey.includes('...')) {
-        return "I can explain this concept! Since we are in test mode, imagine I just gave you a brilliant, concise explanation of **" + task.title + "** with a perfect code example.";
+    const { apiConfig, demoMode } = useStore.getState();
+    const isMock = goal === 'Test Career' || demoMode || !apiConfig?.apiKey || apiConfig.apiKey.includes('...');
+
+    if (isMock) {
+        return "I can explain this concept! Since we are in **Demo Mode**, imagine I just gave you a brilliant, concise explanation of **" + task.title + "** with a perfect code example.";
     }
 
     const prompt = `

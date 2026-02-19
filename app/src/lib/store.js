@@ -25,7 +25,15 @@ export const useStore = create((set, get) => ({
     // User Authentication State (managed by Firebase onAuthStateChanged in App.jsx)
     user: null,         // { uid, email, displayName, photoURL } - Firebase Auth User data
     isLoggedIn: false,  // Replaces previous 'isAuthenticated'
-    apiKey: localStorage.getItem('openrouter_api_key') || import.meta.env.VITE_OPENROUTER_API_KEY || '', // Initialize from local storage or env
+    // API Configuration
+    apiConfig: JSON.parse(localStorage.getItem('api_config')) || {
+        provider: 'openrouter',
+        apiKey: localStorage.getItem('openrouter_api_key') || '',
+        baseUrl: 'https://openrouter.ai/api/v1',
+        model: 'arcee-ai/trinity-large-preview:free'
+    },
+    demoMode: false,
+    isApiKeyModalOpen: false,
 
 
     // Engagement Metrics (will be synced with users/{uid} document in Firestore)
@@ -59,10 +67,18 @@ export const useStore = create((set, get) => ({
     setUser: (userData) => set({ user: userData, isLoggedIn: true }),
 
     // Action to set API Key
-    setApiKey: (key) => {
-        localStorage.setItem('openrouter_api_key', key);
-        set({ apiKey: key });
+    // Action to set API Config
+    setApiConfig: (config) => {
+        localStorage.setItem('api_config', JSON.stringify(config));
+        // Backwards compatibility for legacy local storage
+        if (config.provider === 'openrouter') {
+            localStorage.setItem('openrouter_api_key', config.apiKey);
+        }
+        set({ apiConfig: config });
     },
+
+    setDemoMode: (isDemo) => set({ demoMode: isDemo }),
+    setApiKeyModalOpen: (isOpen) => set({ isApiKeyModalOpen: isOpen }),
 
     // Action to clear user data on logout (called by App.jsx's onAuthStateChanged)
     logoutUser: () => set({

@@ -51,7 +51,11 @@ function App() {
     showQuests,
     setShowQuests,
     setPhase,
-    compileManifest
+    compileManifest,
+    // API & Demo Mode State
+    apiConfig,
+    demoMode,
+    setApiKeyModalOpen
   } = useStore();
 
   const activeSession = sessions[activeSessionId];
@@ -213,6 +217,14 @@ function App() {
   const handleGoalSubmit = async (goal, deadline) => {
     console.log('Goal submitted:', goal, deadline);
 
+    // 0. CHECK FOR API KEY OR DEMO MODE
+    const hasKey = apiConfig?.apiKey && apiConfig.apiKey.length > 5;
+    if (!hasKey && !demoMode) {
+      console.log("No API Key or Demo Mode detected. Triggering Modal.");
+      setApiKeyModalOpen(true);
+      return; // Stop execution here. User must configure key/demo and click submit again.
+    }
+
     // 1. Parse goal via Gemini
     const result = await parseCareerGoal(goal);
     console.log('Gemini Result:', result);
@@ -222,14 +234,14 @@ function App() {
       const targetDate = calculateTargetDate(deadline);
 
       // 2. Create Session (this sets it as active)
-      createSession(goal, result.role, targetDate); // This action also triggers syncToFirestore
+      createSession(goal, result.role, targetDate);
 
       // 3. Generate questions via Gemini
       console.log('Generating questions for:', result.role);
       const questions = await generateQuestions(result.role);
 
       if (questions && questions.length > 0) {
-        setQuestions(questions); // This action also triggers syncToFirestore
+        setQuestions(questions);
       } else {
         alert('Failed to generate questions. Please try again.');
       }
