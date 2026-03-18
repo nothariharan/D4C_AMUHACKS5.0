@@ -1,4 +1,4 @@
-// import React, { useEffect, useState, useMemo } from 'react'; // Consolidated React and hooks imports
+import React, { useEffect, useState, useMemo } from 'react'; // Consolidated React and hooks imports
 import { onAuthStateChanged } from 'firebase/auth'; // Firebase Auth
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore'; // Firestore functions
 import { auth, db } from './lib/firebase'; // Consolidated Firebase imports (db added)
