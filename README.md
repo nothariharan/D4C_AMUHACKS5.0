@@ -1,5 +1,7 @@
 # JustAsk - Goal First. Action Always.
 
+( redacted nor being used anymore )
+
 ![JustAsk Logo](/app/public/logo.png)
 
 > **"Every expert was once a beginner. The best time to start was yesterday. The next best time is now."**
